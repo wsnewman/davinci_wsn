@@ -1,0 +1,104 @@
+davinci frames in rviz/urdf:
+
+one_tool_tip_link:  
+        origin at gripper tip, 
+        z-axis points parallel to jaws, 
+        y-axis is dir of jaw opening
+
+	parent: one_tool_wrist_sca_shaft_link:  
+					
+
+one_tool_wrist_sca_shaft_link:
+	z-axis is along gripper-jaw rotation joint;
+        y-axis lies along gripper jaws (parallel to jaws)
+        origin is on gripper-jaw rotation axis
+
+	parent: one_tool_wrist_sca_link
+
+one_tool_wrist_sca_link:
+	z-axis is along wrist tilt
+	x-axis points towards (and intersects) jaw-rotation axis (z-axis of child frame above)
+        origin is centered on wrist-tilt axis, between bearings
+  
+        parent: one_tool_wrist_shaft_link
+
+one_tool_wrist_shaft_link:
+        origin coincident w/ child frame above
+        z-axis points out, coincident with shaft centerline
+        y-axis is coincident w/ child z-axis (wrist bend axis) at shaft-rotation = 0
+
+        parent: one_tool_wrist_link
+
+tree:
+   world
+     one_psm_base_link
+       one_outer_yaw_link
+           one_outer_pitch_link
+              one_tool_main_link
+                 one_tool_wrist_link
+                   one_tool_wrist_shaft_link
+                     one_tool_wrist_sca_link
+                        one_tool_wrist_swca_shaft_link
+                           one_tool_tip_link
+
+ one_outer_yaw_link is at trocar constraint point
+ one_outer_pitch_link is also at trocar constraint point
+ one_tool_main_link is back at motors location on prismatic joint, moving with tool
+
+ one_psm_base_link is stationary, w/ 
+                origin at constraint point, 
+                z-axis "up" and 
+                y-axis colinear w/ first joint (yaw= tilt) axis, pointing AWAY from base
+                child: one_outer_yaw_link
+
+ one_outer_yaw_link:
+                origin coincident w/ one_psm_base_link at constraint point
+                z-axis points along yaw tilt axis of jnt1, w/ z pointing TOWARDS base
+                at jnt1-ang=0, z-axis is UP
+                child: one_outer_pitch_link
+
+  one_outer_pitch_link:
+                origin coincident w/ constraint point
+                z-axis is axis of rotation, positive to robot's LEFT, 
+                     is coincident with y-axis of parent frame
+                at jnt2-ang = 0, y-axis of one_outer_pitch_link is coincident
+                     w/ x-axis of one_outer_yaw_link, which points along tool centerline TOWARDS motors
+                child: one_tool_main_link
+
+  one_tool_main_link:
+                origin is at motors on tool; 
+                z-axis points along tool centerline, from motors towards gripper;
+                x-axis points back towards base (y-axis is to robot's left)
+                child is one_tool_wrist_link
+
+  one_tool_wrist_link:
+                origin is at wrist-bend axis
+                this frame moves w/ tool-shaft rotation
+                frame z-axis is parallel to parent from, colinear w/ tool centerline, pointing towards gripper
+                frame is aligned w/ parent at zero angle of tool spin (q4)
+                child is: one_tool_wrist_shaft_link
+
+  one_tool_wrist_shaft_link: looks identical to one_tool_wrist_link
+                THESE ARE RELATED BY A FIXED JOINT--COINCIDENT!
+                child: one_tool_wrist_sca_link
+
+  one_tool_wrist_sca_link: 
+                moves w/ wrist bend, q5
+                origin coincident w/ parent
+                z-axis along wrist-bend joint
+                x-axis points towards gripper tips (at gripper jaws q6 = 0)
+
+  
+
+
+     
+
+ 
+
+
+                
+
+
+
+ 
+
