@@ -8,6 +8,8 @@
 #include <Eigen/Geometry>
 #include <Eigen/Dense>
 
+const double insertion_offset=0.0156;
+
 int main(int argc, char **argv) {
     ros::init(argc, argv, "dv_joint_state_publisher"); // name of this node will be "minimal_publisher1"
     ros::NodeHandle n; // two lines to create a publisher object that can talk to ROS
@@ -74,8 +76,9 @@ int main(int argc, char **argv) {
 
         //joint 1: 
         // DEBUG:
-        q_vec[0] = 1.0;
-        q_vec[1]= 1.0;
+        q_vec[0] = 1.57;
+        //q_vec[1]= 1.0;
+        q_vec[2] = insertion_offset;
         jointState.position[0] = q_vec[0];
 
         //joint2:

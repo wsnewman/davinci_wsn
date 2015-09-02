@@ -20,9 +20,205 @@ int main(int argc, char **argv) {
     Vectorq7x1 q_in;
     q_in << 0,0,0,0,0,0,0;
     //q_in << 0.1, 0.2, 0.3, 0.4, 0.5, 0.6;
-    tf::TransformListener tfListener;
+    //tf::TransformListener tfListener;
     tf::StampedTransform baseToHand;
+    tf::StampedTransform tf_wrist_wrt_base;
+    tf::TransformListener tfListener;
     
+    //Davinci_IK_solver ik_solver;
+    // bring in a fwd solver object:
+    Davinci_fwd_solver davinci_fwd_solver; //instantiate a forward-kinematics solver    
+    //g_tfListener_ptr = &tfListener;
+    // wait to start receiving valid tf transforms 
+    Eigen::Affine3f affine_wrist_wrt_base;
+    bool tferr = true;
+    ROS_INFO("waiting for tf between one_psm_base_link and one_tool_wrist_sca_link...");
+    while (tferr) {
+        tferr = false;
+        try {
+
+            //The direction of the transform returned will be from the target_frame to the source_frame. 
+            //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
+            tfListener.lookupTransform("one_psm_base_link", "one_tool_wrist_sca_link", ros::Time(0), tf_wrist_wrt_base);
+        } catch (tf::TransformException &exception) {
+            ROS_ERROR("%s", exception.what());
+            tferr = true;
+            ros::Duration(0.5).sleep(); // sleep for half a second
+            ros::spinOnce();
+        }
+    }
+    ROS_INFO("tf is good");
+    /*
+    tf::Vector3 tf_Origin = tf_wrist_wrt_base.getOrigin();
+    //ROS_INFO("")
+    tf::Matrix3x3 tf_R = tf_wrist_wrt_base.getBasis();
+    
+    tf::Transform tf_temp;
+    tf_temp.setBasis(tf_R);
+    tf_temp.setOrigin(tf_Origin);
+   affine_wrist_wrt_base=davinci_fwd_solver.transformTFToEigen(tf_temp);
+   */
+   affine_wrist_wrt_base =  davinci_fwd_solver.stampedTFToEigen(tf_wrist_wrt_base);
+
+   cout<<"affine linear (R): "<<endl;
+   cout<<affine_wrist_wrt_base.linear()<<endl;
+   cout<<"origin: ";
+   cout<<affine_wrist_wrt_base.translation().transpose()<<endl;
+   
+   // this much is consistent...
+   // at q[0]=0, q[1]=0, q[2] = insertion_offset, --> origin of frame one_tool_wrist_sca_link = 0,0,0 w/rt
+   // one_psm_base_link;
+   // also, axes of frame one_tool_wrist_sca_link are correctly described in R matrix
+   
+   // at q[0] = 1.57, tool leans to "left";
+   // no change in origin of frame one_tool_wrist_sca_link
+   // and distal frame now has x-axis aligned w/ ref frame, and z axes are antiparallel and y axes are antiparallel
+   // i.e., R matrix still makes sense
+   // ==> this interpretation of Affine is: distal frame w/rt base frame
+   
+   // create a static transform to describe DH frame-0 w/rt our base frame:
+   Eigen::Matrix3f R_0_wrt_base;
+   Eigen::Vector3f Origin_0_wrt_base;
+   Origin_0_wrt_base<<0,0,0;
+   Eigen::Vector3f x_axis,y_axis,z_axis;
+   z_axis<<0,-1,0; // points IN, so + rotation is consistent leaning to the robot's left
+   x_axis<<0,0,-1;  // choose x0 to point down, so will not have a joint-angle offset for pitch
+   y_axis<<1,0,0; // consistent triad
+   R_0_wrt_base.col(0) = x_axis;
+   R_0_wrt_base.col(1) = y_axis;
+   R_0_wrt_base.col(2) = z_axis;   
+   Eigen::Affine3f affine_frame0_wrt_base;
+   affine_frame0_wrt_base.linear() = R_0_wrt_base;
+   affine_frame0_wrt_base.translation() = Origin_0_wrt_base;   
+   
+   
+   
+   /*
+   ROS_INFO("frame tool tip w/rt tool_wrist_sca_shaft_link");
+   tfListener.lookupTransform("one_tool_wrist_sca_shaft_link", "one_tool_tip_link", ros::Time(0), tf_wrist_wrt_base);
+   tf_Origin = tf_wrist_wrt_base.getOrigin();
+   tf_R = tf_wrist_wrt_base.getBasis();
+    tf_temp.setBasis(tf_R);
+    tf_temp.setOrigin(tf_Origin);
+   affine_wrist_wrt_base=davinci_fwd_solver.transformTFToEigen(tf_temp);
+   cout<<"affine linear (R): "<<endl;
+   cout<<affine_wrist_wrt_base.linear()<<endl;
+   cout<<"origin: ";
+   cout<<affine_wrist_wrt_base.translation().transpose()<<endl;  
+   
+   ROS_INFO("frame one_tool_wrist_sca_shaft_link w/rt one_tool_wrist_link");
+   tfListener.lookupTransform("one_tool_wrist_link", "one_tool_wrist_sca_shaft_link", ros::Time(0), tf_wrist_wrt_base);
+   tf_Origin = tf_wrist_wrt_base.getOrigin();
+   tf_R = tf_wrist_wrt_base.getBasis();
+    tf_temp.setBasis(tf_R);
+    tf_temp.setOrigin(tf_Origin);
+   affine_wrist_wrt_base= davinci_fwd_solver.transformTFToEigen(tf_temp);
+   cout<<"affine linear (R): "<<endl;
+   cout<<affine_wrist_wrt_base.linear()<<endl;
+   cout<<"origin: ";
+   cout<<affine_wrist_wrt_base.translation().transpose()<<endl;     
+   
+   ROS_INFO("frame one_psm_base_link to one_tool_tip_link");
+   tfListener.lookupTransform("one_psm_base_link", "one_tool_tip_link", ros::Time(0), tf_wrist_wrt_base);
+   tf_Origin = tf_wrist_wrt_base.getOrigin();
+   tf_R = tf_wrist_wrt_base.getBasis();
+    tf_temp.setBasis(tf_R);
+    tf_temp.setOrigin(tf_Origin);
+   affine_wrist_wrt_base= davinci_fwd_solver.transformTFToEigen(tf_temp);
+   cout<<"affine linear (R): "<<endl;
+   cout<<affine_wrist_wrt_base.linear()<<endl;
+   cout<<"origin: ";
+   cout<<affine_wrist_wrt_base.translation().transpose()<<endl;  
+   
+   double gripper_jaw_length = 0.0102;
+   Eigen::Vector3f gripper_tip_origin;
+   gripper_tip_origin = affine_wrist_wrt_base.translation();
+   Eigen::Vector3f z_vec_gripper_tip;
+   Eigen::Matrix3f  R_gripper_tip;
+   R_gripper_tip = affine_wrist_wrt_base.linear();
+   z_vec_gripper_tip = R_gripper_tip.col(2);
+   Eigen::Vector3f computed_jaw_axis_origin;
+   computed_jaw_axis_origin = gripper_tip_origin - z_vec_gripper_tip*gripper_jaw_length;
+   cout<<"computed jaw axis origin: "<<computed_jaw_axis_origin.transpose()<<endl;
+   
+   //find origin of one_tool_wrist_link relative to one_psm_base_link
+  ROS_INFO("frame 6 w/rt frame 0");
+   tfListener.lookupTransform("one_psm_base_link", "one_tool_wrist_sca_shaft_link", ros::Time(0), tf_wrist_wrt_base);
+   tf_Origin = tf_wrist_wrt_base.getOrigin();
+   tf_R = tf_wrist_wrt_base.getBasis();
+    tf_temp.setBasis(tf_R);
+    tf_temp.setOrigin(tf_Origin);
+   affine_wrist_wrt_base = davinci_fwd_solver.transformTFToEigen(tf_temp);
+   cout<<"affine linear (R): "<<endl;
+   cout<<affine_wrist_wrt_base.linear()<<endl;
+   cout<<"origin: ";
+   cout<<affine_wrist_wrt_base.translation().transpose()<<endl;  
+   Eigen::Matrix3f R_6_wrt_0;
+   Eigen::Vector3f O_6_wrt_0;   
+   R_6_wrt_0 = affine_wrist_wrt_base.linear();
+   O_6_wrt_0 = affine_wrist_wrt_base.translation();
+   
+   cout<<"computed jaw axis origin: "<<computed_jaw_axis_origin.transpose()<<endl;
+   
+   //find origin of one_tool_wrist_link relative to one_psm_base_link
+  ROS_INFO("frame one_tool_wrist_shaft_link to one_tool_wrist_sca_shaft_link");
+   tfListener.lookupTransform("one_tool_wrist_shaft_link", "one_tool_wrist_sca_shaft_link", ros::Time(0), tf_wrist_wrt_base);
+   tf_Origin = tf_wrist_wrt_base.getOrigin();
+   tf_R = tf_wrist_wrt_base.getBasis();
+    tf_temp.setBasis(tf_R);
+    tf_temp.setOrigin(tf_Origin);
+   affine_wrist_wrt_base= davinci_fwd_solver.transformTFToEigen(tf_temp);
+   cout<<"affine linear (R): "<<endl;
+   cout<<affine_wrist_wrt_base.linear()<<endl;
+   cout<<"origin: ";
+   cout<<affine_wrist_wrt_base.translation().transpose()<<endl;  
+   
+   double a_from_wrist_bend_to_jaw_axis =  0.0091;
+   
+   //   R(q6) =   [sin(q6)  cos(q6)  0
+   //             0        0      1
+   //           cos(q6) -sin(q6)  0]
+//
+   // == R_{6/5}
+   Eigen::Matrix3f R_6_wrt_5, R_5_wrt_0;
+   Eigen::Vector3f O_5_wrt_0;
+   // GIVEN O_6_wrt_0 and R_6_wrt_0 as specification of desired gripper pose, w/rt ref frame 0 = one_psm_base_link
+   // w/ origin at pivot (trocar) point
+   
+   // TEST FWD KIN CONSISTENCY; SET MODEL q6 as follows
+   double q6 = 1.0; // put q6 value here, or subscribe to it; eventually, solve for it
+   Eigen::Vector3f x_vec, y_vec, z_vec;
+   double a6 = 0.0091; //distance from jaw-bend axis to wrist-bend axis
+   x_vec<<sin(q6),0,cos(q6);
+   y_vec<<cos(q6),0,-sin(q6);
+   z_vec<<0,1,0;
+   R_6_wrt_5.col(0) = x_vec;
+   R_6_wrt_5.col(1) = y_vec;   
+   R_6_wrt_5.col(2) = z_vec;  
+   R_5_wrt_0 = R_6_wrt_5.transpose()*R_6_wrt_0;
+   Eigen::Vector3f xvec_5;
+   xvec_5 = R_5_wrt_0.col(0);
+   O_5_wrt_0 = O_6_wrt_0 - a6*xvec_5; //get to O5 by moving dist a6 backwards along x5 from O6
+   
+   cout<<"computed O_5_wrt_0: "<<O_5_wrt_0.transpose()<<endl;
+   cout<<"computed R_5_wrt_0: "<<endl;
+   cout<<R_5_wrt_0<<endl;
+   
+   // compare this to tf:
+   //find origin of one_tool_wrist_link relative to one_psm_base_link
+   ROS_INFO("frame 5 w/rt frame 0, per tf: ");
+   tfListener.lookupTransform("one_psm_base_link", "one_tool_wrist_sca_link", ros::Time(0), tf_wrist_wrt_base);
+   tf_Origin = tf_wrist_wrt_base.getOrigin();
+   tf_R = tf_wrist_wrt_base.getBasis();
+    tf_temp.setBasis(tf_R);
+    tf_temp.setOrigin(tf_Origin);
+   affine_wrist_wrt_base= davinci_fwd_solver.transformTFToEigen(tf_temp);
+   cout<<"affine linear (R): "<<endl;
+   cout<<affine_wrist_wrt_base.linear()<<endl;
+   cout<<"origin: ";
+   cout<<affine_wrist_wrt_base.translation().transpose()<<endl;    
+ */
+   /*
    bool tferr=true;
     ROS_INFO("waiting for tf between base and right_hand...");
     while (tferr) {
@@ -75,11 +271,10 @@ int main(int argc, char **argv) {
     pos = baseToHand.getOrigin();
     ROS_INFO("hand x,y, z = %f, %f, %f",pos[0],pos[1],pos[2]);   
     
+*/
 
-    //Davinci_IK_solver ik_solver;
-        Davinci_fwd_solver davinci_fwd_solver; //instantiate a forward-kinematics solver
 
-    std::cout << "==== Test for Baxter kinematics solver ====" << std::endl;
+    std::cout << "==== Test for Davinci kinematics solver ====" << std::endl;
     int ans = 1;
     bool reachable_proposition;
     //while (ans) 
@@ -97,6 +292,7 @@ int main(int argc, char **argv) {
         reachable_proposition = ik_solver.fit_joints_to_range(q_in);
         */
         //if (reachable_proposition) 
+        /*
         {
 
             Eigen::Affine3d A_fwd_DH = davinci_fwd_solver.fwd_kin_flange_wrt_r_arm_mount_solve(q_in); //fwd_kin_solve
@@ -128,7 +324,7 @@ int main(int argc, char **argv) {
             
             A_flange = davinci_fwd_solver.get_flange_frame();
             std::cout << "fwd kin flange origin: " << A_flange(0, 3) << ", " << A_flange(1, 3) << ", " << A_flange(2, 3) << std::endl;
-           
+           */
                     
      /*
             int nsolns = ik_solver.ik_solve(A_fwd_DH);
@@ -164,7 +360,7 @@ int main(int argc, char **argv) {
       * */
             //std::cout << "enter 1 to continue, 0 to stop: ";
             //std::cin >> ans;
-        }
+
 
     }
     return 0;

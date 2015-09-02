@@ -97,6 +97,19 @@ Eigen::Affine3f  Davinci_fwd_solver::transformTFToEigen(const tf::Transform &t) 
     return e;
 }
 
+Eigen::Affine3f  Davinci_fwd_solver::stampedTFToEigen(const tf::StampedTransform &t) {
+    tf::Vector3 tf_Origin = t.getOrigin();
+    tf::Matrix3x3 tf_R = t.getBasis();
+    
+    tf::Transform tf_temp;
+    tf_temp.setBasis(tf_R);
+    tf_temp.setOrigin(tf_Origin);
+    Eigen::Affine3f e;
+    e=transformTFToEigen(tf_temp);    
+
+    return e;
+}
+
  //   geometry_msgs::Pose transformEigenAffine3fToPose(Eigen::Affine3f e);
  geometry_msgs::Pose Davinci_fwd_solver::transformEigenAffine3fToPose(Eigen::Affine3f e) {
     Eigen::Vector3f Oe;
