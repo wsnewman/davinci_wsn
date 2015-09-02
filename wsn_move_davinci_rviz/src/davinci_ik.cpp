@@ -22,6 +22,69 @@
 #include <tf/LinearMath/QuadWord.h>
 using namespace std;
 
+//define D-H frames;
+// "base" frame is same as "one_psm_base_link"
+//  O_base is at pivot (trocar) point
+//  z-axis points "up", y-axis points forward, x-axis is to robot's right
+
+// DH-0 frame: this is a static transform from base frame, but conforms to
+// DH convention that z0 is through first joint axis.  
+// get freedom to choose orientation of x0, y0 spin about z0
+// O_0 = O_base
+// + rotation of q[0]==q1 corresponds to "leaning to the left", -->
+// z_0 points along -y axis of base frame;
+
+// choose x0 coincident w/ x_base ==> y0 coincident w/ z_base
+// R_{0/base} = [1  0  0
+//               0  0 -1
+//               0  1  0 ]
+
+// DH-1 frame:  
+// construct from z_0 crossed into z_1==> x_1
+// z_1 axis points to left (positive rotation of q[1]==q2 ==> pitch "leans forward")
+// + rotation is about z-axis pointing to the left, i.e. coincident w/ -x0 (in home position)
+// cross z_0 into z_1 ==> x1 axis points "down" in home position
+// by construction, alpha1 = +pi/2.
+// O_1 = O_0 ==> a1=0, d1=0
+// --> need a psi_0 offset = +/- pi/2 so davinci home (in psi coords) has tool shaft parallel to z_base
+// psi[0] = theta1_DH- pi/2
+
+
+// DH-2 frame: construct from z1 (pitch axis) and z2 (prismatic axis)
+// choose prismatic axis pointing through tool-shaft centerline, towards gripper
+// choose origin O_2 to lie on z1 at intersection w/ wrist-bend joint
+// define d2=0 such that O_2 is at O_base = O_1 = O_2
+// from home pose, z1 is to the left, and z2 is down, so x2 points inwards, towards robot
+// but x1 axis points "down" at Davinci home pose;
+// this corresponds to a theta3 of +pi/2...and this value is static
+// by construction, alpha_2 = +pi/2
+// a2=0, d2 is a variable
+// 
+
+// DH-3 frame: z axis is spin about tool shaft, coincident w/ displacement axis z3
+// choose origin coincident: O_3 = O_2
+// check sign of + spin: alpha3 = 0 or pi
+// check home angle of spin: choose x3, y3 to simplify, e.g. thetaDH_3 = psi_3
+
+// DH-4 frame: construct from tool-shaft spin axis, z3 and wrist-bend z4 axes
+// by choice of origin for O3, have O_3 = O_4
+// --> a4=0, d4=0
+// by construction, x4 = z3 crossed into z4 and alpha4 +pi/2
+// need to find home angle and need to find positive direction of wrist rotation to define +z4
+
+// DH-5 frame: z5 is through gripper-jaw rotation axis
+// O_5 is on the z5 axis, offset from O_4
+// z4 and z5 do not intersect.  Have a non-zero a5 offset
+// min dist from z4 to z5 defines x5; 
+// need to find +rotation direction of jaw rotation--> if alpha5 is +/- pi/2
+// d5 = 0
+// need to find theta5 (wrist-bend) offset for Davinci home
+
+// DH-6 frame: choose a final gripper frame (don't have two axes to construct)
+// try z6 pointing out from z5 axis at +/- pi/2 = alpha6;
+// set coincident origin, a6 = d6 = 0; O_6 = O_5 (then use separate transform to gripper tip, if desired)
+// find theta6 offset to conform w/ Davinci home
+
 tf::TransformListener *g_tfListener_ptr; //pointer to a global transform listener
 void transformTFToEigen(const tf::Transform &t, Eigen::Affine3f &e) {
     for (int i = 0; i < 3; i++) {

@@ -73,6 +73,9 @@ int main(int argc, char **argv) {
         q_vec[6] += amp_vec[6]; // force only positive values for gripper opening
 
         //joint 1: 
+        // DEBUG:
+        q_vec[0] = 1.0;
+        q_vec[1]= 1.0;
         jointState.position[0] = q_vec[0];
 
         //joint2:

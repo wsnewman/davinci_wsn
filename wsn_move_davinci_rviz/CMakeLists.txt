@@ -22,7 +22,7 @@ catkin_simple()
 # Executables
 cs_add_executable(jnt1_sinusoid src/jnt1_sinusoid.cpp)
 cs_add_executable(davinci_joint_state_publisher src/davinci_joint_state_publisher.cpp)
-cs_add_executable(davinci_ik src/davinci_ik.cpp)
+#cs_add_executable(davinci_ik src/davinci_ik.cpp)
 # target_link_library(example my_lib)
 
 cs_install()
