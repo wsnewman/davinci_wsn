@@ -131,6 +131,7 @@ typedef Eigen::Matrix<double, 7, 1> Vectorq7x1;
 //TOOL TRANSFORM params, right hand
 
 const double dist_from_wrist_bend_axis_to_gripper_jaw_rot_axis = 0.0091;
+const double jaw_length = 0.0102;
 const double DH_a1=0.0; //origin0 coincident w/ origin1
 const double DH_a2=0.0; // axis z1,z2 intersect
 const double DH_a3=0.0; //axes z2 (prismatic) and z3 (shaft rot) intersect
@@ -168,7 +169,7 @@ const double insertion_offset=0.0156; //must command this much displacement to g
 
 const double DH_q_offset0 = 0.0;
 const double DH_q_offset1 = M_PI/2.0;
-const double DH_q_offset2 = insertion_offset;
+const double DH_q_offset2 = -insertion_offset;
 const double DH_q_offset3 = 0.0;
 const double DH_q_offset4 = 0.0;
 const double DH_q_offset5 = 0.0; //M_PI;
@@ -214,6 +215,8 @@ public:
     vector <Eigen::Affine3d> affine_products_;
     Eigen::VectorXd thetas_DH_vec_,dvals_DH_vec_;
     Eigen::VectorXd theta_DH_offsets_,dval_DH_offsets_;
+    
+    Eigen::MatrixXd Jacobian_; //not used/implemented yet    
 
     tf::TransformListener *tfListener_ptr_; //pointer to a transform listener
     // some translation utilities
@@ -233,60 +236,13 @@ public:
     // provide joint angles and prismatic displacement (q_vec[2]) w/rt DaVinci coords
     // will get translated to DH coords to solve fwd kin
     // return affine describing gripper pose w/rt base frame
-    Eigen::Affine3d fwd_kin_solve_(const Vectorq7x1& q_vec);   
+    Eigen::Affine3d fwd_kin_solve(const Vectorq7x1& q_vec);   
     
+    Eigen::Affine3d get_affine_frame(int i) { return affine_products_[i]; }; // return affine of frame i w/rt base
      
-    // these functions are for RIGHT ARM ONLY; tool-flange coords, w/rt right-arm mount (default) or w/rt torso (as noted)
-    //Eigen::Affine3d fwd_kin_flange_wrt_r_arm_mount_solve(const Vectorq7x1& q_vec); // given vector of q angles, compute fwd kin
-    //Eigen::Affine3d fwd_kin_flange_wrt_r_arm_mount_solve_approx(const Vectorq7x1& q_vec);//version w/ spherical-wrist approx
-    //Eigen::Affine3d fwd_kin_flange_wrt_torso_solve(const Vectorq7x1& q_vec); //rtns pose w/rt torso frame (base frame)
-
-    // these fncs also include transform from flange to tool frame
-    //Eigen::Affine3d fwd_kin_tool_wrt_r_arm_mount_solve(const Vectorq7x1& q_vec); // given vector of q angles, compute fwd kin of tool w/rt right-arm mount 
-    //Eigen::Affine3d fwd_kin_tool_wrt_r_arm_mount_solve_approx(const Vectorq7x1& q_vec);//version w/ spherical-wrist approx
-    //Eigen::Affine3d fwd_kin_tool_wrt_torso_solve(const Vectorq7x1& q_vec); //rtns pose w/rt torso frame (base frame)    
-    
-    // these are all w/rt right-arm mount, not torso
-    //Eigen::Matrix4d get_wrist_frame();
-    //Eigen::Matrix4d get_shoulder_frame();
-    //Eigen::Matrix4d get_elbow_frame();
-    //Eigen::Matrix4d get_flange_frame();  
-
-    //Eigen::Matrix4d get_shoulder_frame_approx();
-    //Eigen::Matrix4d get_elbow_frame_approx();    
-    //Eigen::Matrix4d get_wrist_frame_approx();   
-    //Eigen::Matrix4d get_flange_frame_approx();
-    //Eigen::Matrix3d get_wrist_Jacobian_3x3(double q_s1, double q_humerus, double q_elbow, double q_forearm); //3x3 J for wrist point coords
-    //Eigen::Vector3d get_wrist_coords_wrt_frame1(const Vectorq7x1& q_vec); //fwd kin from frame 1 to wrist pt
-    
-    //this fnc casts an affine matrix w/rt torso frame into an affine matrix w/rt right-arm mount frame, so can use fncs above
-    //Eigen::Affine3d transform_affine_from_torso_frame_to_arm_mount_frame(Eigen::Affine3d pose_wrt_torso);    
-    //Eigen::Affine3d get_affine_tool_wrt_flange() { return A_tool_wrt_flange_;}
-    
-//private: do not make these private, so IK can access them
-    // these member vars are for RIGHT ARM
-//inner fwd-kin fnc: computes tool-flange frame w/rt right_arm_mount frame
-//return soln out to tool flange; would still need to account for tool transform for gripper    
-
-// same as above, but w/ spherical wrist approx
-    //Eigen::Matrix4d fwd_kin_solve_approx_(const Vectorq7x1& q_vec);  
-    //Eigen::Matrix4d A_frame0_wrt_base;
-    //Eigen::Matrix4d A_mats_[7], A_mat_products_[7]; //, A_tool; // note: tool A must also handle diff DH vs URDF frame-7 xform
-    //Eigen::Matrix4d A_mats_approx_[7], A_mat_products_approx_[7];
-    //Eigen::Matrix4d A_rarm_mount_to_r_lower_forearm_;
-    //Eigen::Affine3d Affine_rarm_mount_to_r_lower_forearm_;   //initialized, but not used
-   // Eigen::Matrix4d A_torso_to_rarm_mount_;    
-    //Eigen::Affine3d Affine_torso_to_rarm_mount_;
-
-    //Eigen::Affine3d A_tool_wrt_flange_;
-    //Eigen::Affine3d A_tool_wrt_flange_inv_;    
-    Eigen::MatrixXd Jacobian_; //not used
-    
-
-    // CREATE CORRESPONDING FUNCTIONS FOR LEFT ARM...
 };
 
-//BUILD THESE FIRST FOR RIGHT ARM--THEN EMULATE FOR CORRESPONDING LEFT-ARM FNCS
+//IK class derived from FK class:
 class Davinci_IK_solver:Davinci_fwd_solver  {
 public:
     Davinci_IK_solver(); //constructor; 

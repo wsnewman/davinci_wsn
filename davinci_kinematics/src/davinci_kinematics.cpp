@@ -6,7 +6,7 @@
 using namespace std;
 
 
-tf::TransformListener *g_tfListener_ptr; //pointer to a global transform listener
+//tf::TransformListener *g_tfListener_ptr; //pointer to a global transform listener
 
 
 Eigen::Affine3f  Davinci_fwd_solver::transformTFToEigen(const tf::Transform &t) {
@@ -113,17 +113,23 @@ Eigen::Affine3f  Davinci_fwd_solver::stampedTFToEigen(const tf::StampedTransform
 void Davinci_fwd_solver::convert_qvec_to_DH_vecs(const Vectorq7x1& q_vec) {
     //    Eigen::VectorXd thetas_DH_vec_,dvals_DH_vec_;
     //Eigen::VectorXd theta_DH_offsets_,dval_DH_offsets_;
+    thetas_DH_vec_.resize(7);
+
     thetas_DH_vec_ = theta_DH_offsets_; // +? -?
-    for (int i=0;i<1;i++) {
+    for (int i=0;i<2;i++) {
         thetas_DH_vec_(i)+= q_vec(i);
     }
-    
+
     for (int i=3;i<7;i++) {
         thetas_DH_vec_(i)+= q_vec(i);
     }
-    
+
+    dvals_DH_vec_.resize(7);
+
     dvals_DH_vec_ = dval_DH_offsets_; //+? -?
+
     dvals_DH_vec_(2)+=q_vec(2);
+    ROS_INFO("q_vec(2), dvals_DH_vec_(2) = %f, %f",q_vec(2),dvals_DH_vec_(2));
 
 }
 
@@ -156,46 +162,6 @@ Eigen::Affine3d Davinci_fwd_solver::computeAffineOfDH(double a, double d, double
      return affine_DH;
 }
 
-
-//ALL FNCS BELOW ARE FOR RIGHT ARM; EMULATE FOR CORRESPONDING LEFT-ARM METHODS AND VARS
-/*
-Eigen::Matrix4d compute_A_of_DH(int i, double q_abb) {
-    Eigen::Matrix4d A;
-    Eigen::Matrix3d R;
-    Eigen::Vector3d p;
-    double a = DH_a_params[i];
-    double d = DH_d_params[i];
-    double alpha = DH_alpha_params[i];
-    double q = q_abb + DH_q_offsets[i];
-
-    A = Eigen::Matrix4d::Identity();
-    R = Eigen::Matrix3d::Identity();
-    //ROS_INFO("compute_A_of_DH: a,d,alpha,q = %f, %f %f %f",a,d,alpha,q);
-
-    double cq = cos(q);
-    double sq = sin(q);
-    double sa = sin(alpha);
-    double ca = cos(alpha);
-    R(0, 0) = cq;
-    R(0, 1) = -sq*ca; //% - sin(q(i))*cos(alpha);
-    R(0, 2) = sq*sa; //%sin(q(i))*sin(alpha);
-    R(1, 0) = sq;
-    R(1, 1) = cq*ca; //%cos(q(i))*cos(alpha);
-    R(1, 2) = -cq*sa; //%	
-    //%R(3,1)= 0; %already done by default
-    R(2, 1) = sa;
-    R(2, 2) = ca;
-    p(0) = a * cq;
-    p(1) = a * sq;
-    p(2) = d;
-    A.block<3, 3>(0, 0) = R;
-    A.col(3).head(3) = p;
-    return A;
-}
- */
-
-
-
 Davinci_fwd_solver::Davinci_fwd_solver() { 
     //affine describing frame0 w/rt base frame--see comments above
    Eigen::Matrix3d R_0_wrt_base;
@@ -215,51 +181,79 @@ Davinci_fwd_solver::Davinci_fwd_solver() {
    affine_frame0_wrt_base_.linear() = R_0_wrt_base;
    affine_frame0_wrt_base_.translation() = Origin_0_wrt_base;      
 
+   // fill in a static tool transform from frame6 to a frame of interest on the gripper
+   //Eigen::Affine3d affine_gripper_wrt_frame6_;
+   Eigen::Matrix3d R_gripper_wrt_frame6;
+   Eigen::Vector3d Origin_gripper_wrt_frame6;
+   Origin_gripper_wrt_frame6<<0,0,jaw_length;
+   z_axis<<0,0,1; // points IN, so + rotation is consistent leaning to the robot's left
+   x_axis<<1,0,0;  // choose x0 to point down, so will not have a joint-angle offset for pitch
+   y_axis<<0,1,0; // consistent triad
+   R_gripper_wrt_frame6.col(0) = x_axis;
+   R_gripper_wrt_frame6.col(1) = y_axis;
+   R_gripper_wrt_frame6.col(2) = z_axis;     
+   affine_gripper_wrt_frame6_.linear() = R_gripper_wrt_frame6;
+   affine_gripper_wrt_frame6_.translation() = Origin_gripper_wrt_frame6;   
+   
+   theta_DH_offsets_.resize(7);
+   for (int i=0;i<7;i++) {
+       theta_DH_offsets_(i) = DH_q_offsets[i];
+   }
+   theta_DH_offsets_(2) = 0.0; //don't put prismatic displacement here
+   
+   dval_DH_offsets_.resize(7);
+   dval_DH_offsets_<<0,0,DH_q_offsets[2],0,0,0,0;
+   
 
-    /* 
-    A_rarm_mount_to_r_lower_forearm_ = Eigen::Matrix4d::Identity();
-    A_rarm_mount_to_r_lower_forearm_(0,3) = rmount_to_r_lower_forearm_x;
-    A_rarm_mount_to_r_lower_forearm_(1,3) = rmount_to_r_lower_forearm_y;
-    A_rarm_mount_to_r_lower_forearm_(2,3) = rmount_to_r_lower_forearm_z;
-    Affine_rarm_mount_to_r_lower_forearm_ = A_rarm_mount_to_r_lower_forearm_; // affine version of above
-    //ROS_INFO("fwd_solver constructor");
-    //there is also a static transform between torso and right-arm mount
-    //manually populate values for this transform...
-    A_torso_to_rarm_mount_ = Eigen::Matrix4d::Identity();
-    A_torso_to_rarm_mount_(0,3) = torso_to_rmount_x;
-    A_torso_to_rarm_mount_(1,3) = torso_to_rmount_y;
-    A_torso_to_rarm_mount_(2,3) = torso_to_rmount_z;  
-    A_torso_to_rarm_mount_(0,0) = cos(theta_z_arm_mount);
-    A_torso_to_rarm_mount_(0,0) = cos(theta_z_arm_mount); 
-    A_torso_to_rarm_mount_(1,1) = cos(theta_z_arm_mount);
-    A_torso_to_rarm_mount_(0,1) = -sin(theta_z_arm_mount);  
-    A_torso_to_rarm_mount_(1,0) = -A_torso_to_rarm_mount_(0,1); 
-    Affine_torso_to_rarm_mount_ = A_torso_to_rarm_mount_;
-    
-    Eigen::Matrix3d R_hand;
-    Eigen::Vector3d O_hand;
-
-    O_hand(0) = Lx_hand;
-    O_hand(1) = 0.0;
-    O_hand(2) = Lz_hand;
-    
-    R_hand(0, 0) = cos(theta_yaw_hand);
-    R_hand(0, 1) = -sin(theta_yaw_hand); //% - sin(q(i))*cos(alpha);
-    R_hand(0, 2) = 0.0; //
-    R_hand(1, 0) = -R_hand(0, 1);
-    R_hand(1, 1) = R_hand(0, 0); //
-    R_hand(1, 2) = 0.0; //%
-    R_hand(2,0) = 0.0;
-    R_hand(2,1) = 0.0;
-    R_hand(2,2) = 1.0;
-       
-    // set values for the tool transform, from flange to tool frame  
-    //A_tool_to_flange_ = ...;
-    A_tool_wrt_flange_.linear() = R_hand;
-    A_tool_wrt_flange_.translation() = O_hand;
-    A_tool_wrt_flange_inv_ = A_tool_wrt_flange_.inverse();
-     * */
 }
+
+// fwd-kin fnc: computes gripper frame w/rt base frame given q_vec
+Eigen::Affine3d Davinci_fwd_solver::fwd_kin_solve(const Vectorq7x1& q_vec) {   
+    
+    //use:
+    //Eigen::Affine3d affine_frame0_wrt_base_;
+    //Eigen::Affine3d affine_gripper_wrt_frame6_;    
+    //Eigen::Affine3d affine_gripper_wrt_base_; 
+    //vector <Eigen::Affine3d> affines_i_wrt_iminus1_;
+    //vector <Eigen::Affine3d> affine_products_;    
+    // and: 
+    
+    //Eigen::Affine3d Davinci_fwd_solver::computeAffineOfDH(double a, double d, double alpha, double theta)
+    //    vector <Eigen::Affine3d> affines_i_wrt_iminus1_;
+    //  vector <Eigen::Affine3d> affine_products_;
+    
+    //convert q_vec to DH coordinates:
+    ROS_INFO("converting q to DH vals");
+    convert_qvec_to_DH_vecs(q_vec);
+    cout<<"theta_DH: "<<thetas_DH_vec_.transpose()<<endl;
+    cout<<"dvals_DH: "<<dvals_DH_vec_.transpose()<<endl;
+    
+    affines_i_wrt_iminus1_.resize(7);
+    ROS_INFO("computing successive frame transforms: ");
+    Eigen::Affine3d xform;
+    double a,d,theta,alpha;
+    for (int i=0;i<7;i++) {
+        a = DH_a_params[i];
+        d = dvals_DH_vec_(i);
+        alpha = DH_alpha_params[i];
+        theta = thetas_DH_vec_(i);
+        ROS_INFO("i = %d; a,d,alpha,theta = %f %f %f %f",i,a,d,alpha,theta);
+        xform= computeAffineOfDH(DH_a_params[i], dvals_DH_vec_(i), DH_alpha_params[i],thetas_DH_vec_(i));
+        affines_i_wrt_iminus1_[i]= xform;
+    }
+    
+    ROS_INFO("computing transform products: ");
+    affine_products_.resize(7);
+    affine_products_[0] =  affine_frame0_wrt_base_*affines_i_wrt_iminus1_[0];
+    for (int i=1;i<7;i++) {
+        affine_products_[i] = affine_products_[i-1]*affines_i_wrt_iminus1_[i];
+    }
+    
+    affine_gripper_wrt_base_ = affine_products_[6]*affine_gripper_wrt_frame6_;
+    
+    return affine_gripper_wrt_base_;
+}
+
 
 
     // these fncs also include transform from flange to tool frame
@@ -476,43 +470,6 @@ Eigen::Matrix3d Davinci_fwd_solver::get_wrist_Jacobian_3x3(double q_s1, double q
 */
 
 
-//inner fwd-kin fnc: computes gripper frame w/rt base frame given q_vec
-Eigen::Affine3d Davinci_fwd_solver::fwd_kin_solve_(const Vectorq7x1& q_vec) {   
-    
-    //use:
-    //Eigen::Affine3d affine_frame0_wrt_base_;
-    //Eigen::Affine3d affine_gripper_wrt_frame6_;    
-    //Eigen::Affine3d affine_gripper_wrt_base_; 
-    //vector <Eigen::Affine3d> affines_i_wrt_iminus1_;
-    //vector <Eigen::Affine3d> affine_products_;    
-    // and: 
-    
-    
-    
-   // Eigen::Matrix4d A = Eigen::Matrix4d::Identity();
-    //%compute A matrix from frame i to frame i-1:
-   // Eigen::Matrix4d A_i_iminusi;
-   // Eigen::Matrix3d R;
-   // Eigen::Vector3d p;
-    /*
-    for (int i = 0; i < 7; i++) {
-        //A_i_iminusi = compute_A_of_DH(DH_a_params[i],DH_d_params[i],DH_alpha_params[i], q_vec[i] + DH_q_offsets[i] );
-        A_i_iminusi = compute_A_of_DH(i, q_vec[i]);
-        A_mats_[i] = A_i_iminusi;
-        //std::cout << "A_mats[" << i << "]:" << std::endl;
-        //std::cout << A_mats_[i] << std::endl;
-    }
-
-    A_mat_products_[0] = A_mats_[0];
-    //account for static offset from Baxter's right-arm mount frame
-    A_mat_products_[0] = A_rarm_mount_to_r_lower_forearm_*A_mat_products_[0];
-    for (int i = 1; i < 7; i++) {
-        A_mat_products_[i] = A_mat_products_[i - 1] * A_mats_[i];
-    }
-    
-    return A_mat_products_[6]; //tool flange frame
-     * */
-}
 
 
 //IK methods:
