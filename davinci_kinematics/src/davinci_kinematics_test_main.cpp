@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
     Davinci_fwd_solver davinci_fwd_solver; //instantiate a forward-kinematics solver    
     //g_tfListener_ptr = &tfListener;
     // wait to start receiving valid tf transforms 
-    Eigen::Affine3f affine_wrist_wrt_base;
+    Eigen::Affine3d affine_wrist_wrt_base;
     bool tferr = true;
     ROS_INFO("waiting for tf between one_psm_base_link and one_tool_wrist_sca_link...");
     while (tferr) {
@@ -58,7 +58,7 @@ int main(int argc, char **argv) {
     tf_temp.setOrigin(tf_Origin);
    affine_wrist_wrt_base=davinci_fwd_solver.transformTFToEigen(tf_temp);
    */
-   affine_wrist_wrt_base =  davinci_fwd_solver.stampedTFToEigen(tf_wrist_wrt_base);
+   affine_wrist_wrt_base =  davinci_fwd_solver.stampedTFToAffine3d(tf_wrist_wrt_base);
 
    cout<<"affine linear (R): "<<endl;
    cout<<affine_wrist_wrt_base.linear()<<endl;
@@ -76,6 +76,7 @@ int main(int argc, char **argv) {
    // i.e., R matrix still makes sense
    // ==> this interpretation of Affine is: distal frame w/rt base frame
    
+   /*
    // create a static transform to describe DH frame-0 w/rt our base frame:
    Eigen::Matrix3f R_0_wrt_base;
    Eigen::Vector3f Origin_0_wrt_base;
@@ -90,7 +91,7 @@ int main(int argc, char **argv) {
    Eigen::Affine3f affine_frame0_wrt_base;
    affine_frame0_wrt_base.linear() = R_0_wrt_base;
    affine_frame0_wrt_base.translation() = Origin_0_wrt_base;   
-   
+   */
    
    
    /*
