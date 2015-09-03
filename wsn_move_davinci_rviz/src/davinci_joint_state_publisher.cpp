@@ -77,12 +77,12 @@ int main(int argc, char **argv) {
         //joint 1: 
         // DEBUG:
         /* */
-         q_vec[0] = 0.0;
-        q_vec[1]= 0.0;
-        q_vec[2] = insertion_offset+0.0;
-        q_vec[3] = 0.0;
-        q_vec[4] = 0.0; // wrist bend
-        q_vec[5] = 0.0; //1.57; // gripper-jaw rotation
+        q_vec[0] = -0.5;
+        q_vec[1]= 1; //0.4;
+        q_vec[2] = insertion_offset+0.5; //0.2;
+        q_vec[3] = -1.3;  //0.3;
+        q_vec[4] = 0.0; //0.5; // wrist bend
+        q_vec[5] = 0.0; //1.0; //1.57; // gripper-jaw rotation
         q_vec[6] = 0.0;
       
         jointState.position[0] = q_vec[0];

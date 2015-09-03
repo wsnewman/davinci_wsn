@@ -129,7 +129,7 @@ void Davinci_fwd_solver::convert_qvec_to_DH_vecs(const Vectorq7x1& q_vec) {
     dvals_DH_vec_ = dval_DH_offsets_; //+? -?
 
     dvals_DH_vec_(2)+=q_vec(2);
-    ROS_INFO("q_vec(2), dvals_DH_vec_(2) = %f, %f",q_vec(2),dvals_DH_vec_(2));
+    //ROS_INFO("q_vec(2), dvals_DH_vec_(2) = %f, %f",q_vec(2),dvals_DH_vec_(2));
 
 }
 
@@ -183,17 +183,20 @@ Davinci_fwd_solver::Davinci_fwd_solver() {
 
    // fill in a static tool transform from frame6 to a frame of interest on the gripper
    //Eigen::Affine3d affine_gripper_wrt_frame6_;
+   /*
    Eigen::Matrix3d R_gripper_wrt_frame6;
    Eigen::Vector3d Origin_gripper_wrt_frame6;
-   Origin_gripper_wrt_frame6<<0,0,jaw_length;
-   z_axis<<0,0,1; // points IN, so + rotation is consistent leaning to the robot's left
-   x_axis<<1,0,0;  // choose x0 to point down, so will not have a joint-angle offset for pitch
-   y_axis<<0,1,0; // consistent triad
+   Origin_gripper_wrt_frame6<<0,0,gripper_jaw_length;
+   z_axis<<0,0,1; 
+   x_axis<<1,0,0;  
+   y_axis<<0,1,0; 
    R_gripper_wrt_frame6.col(0) = x_axis;
    R_gripper_wrt_frame6.col(1) = y_axis;
    R_gripper_wrt_frame6.col(2) = z_axis;     
    affine_gripper_wrt_frame6_.linear() = R_gripper_wrt_frame6;
    affine_gripper_wrt_frame6_.translation() = Origin_gripper_wrt_frame6;   
+   */
+   affine_gripper_wrt_frame6_ = computeAffineOfDH(0, gripper_jaw_length, 0,-M_PI/2);
    
    theta_DH_offsets_.resize(7);
    for (int i=0;i<7;i++) {
@@ -223,13 +226,13 @@ Eigen::Affine3d Davinci_fwd_solver::fwd_kin_solve(const Vectorq7x1& q_vec) {
     //  vector <Eigen::Affine3d> affine_products_;
     
     //convert q_vec to DH coordinates:
-    ROS_INFO("converting q to DH vals");
+    //ROS_INFO("converting q to DH vals");
     convert_qvec_to_DH_vecs(q_vec);
-    cout<<"theta_DH: "<<thetas_DH_vec_.transpose()<<endl;
-    cout<<"dvals_DH: "<<dvals_DH_vec_.transpose()<<endl;
+    //cout<<"theta_DH: "<<thetas_DH_vec_.transpose()<<endl;
+    //cout<<"dvals_DH: "<<dvals_DH_vec_.transpose()<<endl;
     
     affines_i_wrt_iminus1_.resize(7);
-    ROS_INFO("computing successive frame transforms: ");
+    //ROS_INFO("computing successive frame transforms: ");
     Eigen::Affine3d xform;
     double a,d,theta,alpha;
     for (int i=0;i<7;i++) {
@@ -237,12 +240,12 @@ Eigen::Affine3d Davinci_fwd_solver::fwd_kin_solve(const Vectorq7x1& q_vec) {
         d = dvals_DH_vec_(i);
         alpha = DH_alpha_params[i];
         theta = thetas_DH_vec_(i);
-        ROS_INFO("i = %d; a,d,alpha,theta = %f %f %f %f",i,a,d,alpha,theta);
+        //ROS_INFO("i = %d; a,d,alpha,theta = %f %f %f %f",i,a,d,alpha,theta);
         xform= computeAffineOfDH(DH_a_params[i], dvals_DH_vec_(i), DH_alpha_params[i],thetas_DH_vec_(i));
         affines_i_wrt_iminus1_[i]= xform;
     }
     
-    ROS_INFO("computing transform products: ");
+    //ROS_INFO("computing transform products: ");
     affine_products_.resize(7);
     affine_products_[0] =  affine_frame0_wrt_base_*affines_i_wrt_iminus1_[0];
     for (int i=1;i<7;i++) {

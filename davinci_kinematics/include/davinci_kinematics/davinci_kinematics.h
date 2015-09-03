@@ -128,10 +128,11 @@ typedef Eigen::Matrix<double, 7, 1> Vectorq7x1;
 // such that arms are at 45deg from forward (making a 90-deg angle w/rt each other)
 // and elbow offsets are BELOW humerus axes
 
-//TOOL TRANSFORM params, right hand
+
 
 const double dist_from_wrist_bend_axis_to_gripper_jaw_rot_axis = 0.0091;
-const double jaw_length = 0.0102;
+const double gripper_jaw_length = 0.0102; 
+
 const double DH_a1=0.0; //origin0 coincident w/ origin1
 const double DH_a2=0.0; // axis z1,z2 intersect
 const double DH_a3=0.0; //axes z2 (prismatic) and z3 (shaft rot) intersect
@@ -170,9 +171,9 @@ const double insertion_offset=0.0156; //must command this much displacement to g
 const double DH_q_offset0 = 0.0;
 const double DH_q_offset1 = M_PI/2.0;
 const double DH_q_offset2 = -insertion_offset;
-const double DH_q_offset3 = 0.0;
-const double DH_q_offset4 = 0.0;
-const double DH_q_offset5 = 0.0; //M_PI;
+const double DH_q_offset3 = M_PI;
+const double DH_q_offset4 = M_PI/2;
+const double DH_q_offset5 = M_PI/2; //M_PI;
 const double DH_q_offset6 = 0.0; //M_PI;
 
 const double deg2rad = M_PI/180.0;
