@@ -16,12 +16,13 @@ using namespace std;
 // + rotation of q[0]==q1 corresponds to "leaning to the left", -->
 // z_0 points along -y axis of base frame;
 
-// choose x0 coincident w/ x_base ==> y0 coincident w/ z_base
-// R_{0/base} = [1  0  0
+// choose x0 pointing "down", so yaw home will agree with davinci q[0]
+// then y0 points along +x_base
+// R_{0/base} = [0  1  0
 //               0  0 -1
-//               0  1  0 ]
+//              -1  0  0 ]
 
-// DH-1 frame:  
+// DH-1 frame:  this frame moves w/ yaw joint (theta1 or q(0))
 // construct from z_0 crossed into z_1==> x_1
 // z_1 axis points to left (positive rotation of q[1]==q2 ==> pitch "leans forward")
 // + rotation is about z-axis pointing to the left, i.e. coincident w/ -x0 (in home position)
@@ -38,27 +39,35 @@ using namespace std;
 // define d2=0 such that O_2 is at O_base = O_1 = O_2
 // from home pose, z1 is to the left, and z2 is down, so x2 points inwards, towards robot
 // but x1 axis points "down" at Davinci home pose;
-// this corresponds to a theta3 of +pi/2...and this value is static
+// this corresponds to a theta3 of +pi/2...and this value is static;
 // by construction, alpha_2 = +pi/2
-// a2=0, d2 is a variable
+// a2=0, 
+// d2 is a variable (prismatic joint displacement)
 // 
 
 // DH-3 frame: z axis is spin about tool shaft, coincident w/ displacement axis z3
-// choose origin coincident: O_3 = O_2
-// check sign of + spin: alpha3 = 0 or pi
-// check home angle of spin: choose x3, y3 to simplify, e.g. thetaDH_3 = psi_3
+// for + rotation, z3 points same direction as z2, so alpha3 = 0
+// choose origin coincident: O_3 = O_2, so a3 = d3 = 0
+// get freedom to choose frame orientation of x3 (perpendicular to z3)
+// define x3 direction such that thetaDH4 = q[3] (no offset correction needed; in agreement at home pose)
+// at home pose, x3 points towards robot--coincident w/ x2 of prismatic jnt
+
 
 // DH-4 frame: construct from tool-shaft spin axis, z3 and wrist-bend z4 axes
 // by choice of origin for O3, have O_3 = O_4
 // --> a4=0, d4=0
-// by construction, x4 = z3 crossed into z4 and alpha4 +pi/2
-// need to find home angle and need to find positive direction of wrist rotation to define +z4
+// by construction, x4 = z3 crossed into z4 and alpha4= +pi/2
+// for plus wrist bend, at home pose, z4 points to "left"
+// so, z3 cross z4 = x4 points FORWARD
+// this is pi away from x3, so need offset such that q[3]=0 when thetaDH_4 = pi
+
 
 // DH-5 frame: z5 is through gripper-jaw rotation axis
+// at home pose, z5 points "IN"...s.t. + rotation causes gripper jaws to point to right
 // O_5 is on the z5 axis, offset from O_4
 // z4 and z5 do not intersect.  Have a non-zero a5 offset
-// min dist from z4 to z5 defines x5; 
-// need to find +rotation direction of jaw rotation--> if alpha5 is +/- pi/2
+// min dist from z4 to z5 defines x5; points from O4 to O_5
+// +rotation direction of jaw rotation--> alpha5 is - pi/2
 // d5 = 0
 // need to find theta5 (wrist-bend) offset for Davinci home
 
@@ -202,12 +211,26 @@ Eigen::Matrix4d compute_A_of_DH_approx(int i, double q_abb) {
     return A;
 }
 
-Davinci_fwd_solver::Davinci_fwd_solver() { //(const hand_s& hs, const atlas_frame& base_frame, double rot_ang) {
-    //this is a bit of a misnomer.  The Baxter URDF frame "right_lower_forearm" rotates as a function of q_s0.
-    //However, D-H wants to define a frame with z0 axis along the s0 joint axis;
-    //Define a static transform from arm_mount frame to D-H 0-frame
-    //A_frame0_wrt_base
-            
+Davinci_fwd_solver::Davinci_fwd_solver() { 
+    //affine describing frame0 w/rt base frame--see comments above
+   Eigen::Matrix3f R_0_wrt_base;
+   Eigen::Vector3f Origin_0_wrt_base;
+   Origin_0_wrt_base<<0,0,0;
+   Eigen::Vector3f x_axis,y_axis,z_axis;
+   // R_{0/base} = [0  1  0
+   //               0  0 -1
+   //              -1  0  0 ]
+   z_axis<<0,-1,0; // points IN, so + rotation is consistent leaning to the robot's left
+   x_axis<<0,0,-1;  // choose x0 to point down, so will not have a joint-angle offset for pitch
+   y_axis<<1,0,0; // consistent triad
+   R_0_wrt_base.col(0) = x_axis;
+   R_0_wrt_base.col(1) = y_axis;
+   R_0_wrt_base.col(2) = z_axis;   
+   affine_frame0_wrt_base_; //member variable
+   affine_frame0_wrt_base_.linear() = R_0_wrt_base;
+   affine_frame0_wrt_base_.translation() = Origin_0_wrt_base;      
+
+
             
     A_rarm_mount_to_r_lower_forearm_ = Eigen::Matrix4d::Identity();
     A_rarm_mount_to_r_lower_forearm_(0,3) = rmount_to_r_lower_forearm_x;

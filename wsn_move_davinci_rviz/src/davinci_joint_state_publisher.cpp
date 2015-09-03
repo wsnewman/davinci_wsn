@@ -76,9 +76,14 @@ int main(int argc, char **argv) {
 
         //joint 1: 
         // DEBUG:
-        q_vec[0] = 1.57;
+        q_vec[0] = 0;
         //q_vec[1]= 1.0;
         q_vec[2] = insertion_offset;
+        q_vec[3] = 0.1;
+        q_vec[4] = 0.5; // wrist bend
+        q_vec[5] = 1.57; //1.57; // gripper-jaw rotation
+        q_vec[6] = 0.0;
+        
         jointState.position[0] = q_vec[0];
 
         //joint2:
@@ -101,9 +106,7 @@ int main(int argc, char **argv) {
         
         //jaws:
         // q_vec[5] rotates both jaws together
-        
-        //DEBUG: override q[5]
-        q_vec[5] = 1.0;
+       
         jointState.position[10] = q_vec[5]-0.5*q_vec[6];  
         
         // this rotates only 1 jaw; command only positive values,
