@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
         q_vec = g_q_vec;
         cout<<"using q_vec = "<<q_vec.transpose()<<endl;
     //tf::StampedTransform baseToHand;
-    tf::StampedTransform tf_wrist_wrt_base, tf_gripper_tip_wrt_base;
+    tf::StampedTransform tf_wrist_wrt_base, tf_gripper_tip_wrt_base, tf_frame_wrt_base;
     tf::TransformListener tfListener;
     
     //Davinci_IK_solver ik_solver;
@@ -115,7 +115,36 @@ int main(int argc, char **argv) {
    cout<<affine_wrist_wrt_base.translation().transpose()<<endl;    
    cout<<endl;
    
-   ROS_INFO("wrist frame from FK: ");
+   ROS_INFO("wrist frame (frame 3) from FK: ");
+   affine_frame_wrt_base = davinci_fwd_solver.get_affine_frame(2); // get frame 4 w/rt base
+   cout<<"affine linear (R): "<<endl;
+   cout<<affine_frame_wrt_base.linear()<<endl;
+   cout<<endl;
+   cout<<"origin: ";
+   cout<<affine_frame_wrt_base.translation().transpose()<<endl;   
+   
+  tfListener.lookupTransform("one_psm_base_link", "one_tool_wrist_sca_shaft_link", ros::Time(0), tf_wrist_wrt_base);
+   cout<<endl;
+    ROS_INFO("gripper rot frame one_tool_wrist_sca_shaft_link per tf:");
+   // now get same from tf:
+   affine_frame_wrt_base =  davinci_fwd_solver.stampedTFToAffine3d(tf_frame_wrt_base);
+
+   cout<<"affine linear (R): "<<endl;
+   cout<<affine_frame_wrt_base.linear()<<endl;
+   cout<<endl;
+   cout<<"origin: ";
+   cout<<affine_frame_wrt_base.translation().transpose()<<endl;    
+   cout<<endl;
+   
+   ROS_INFO("gripper frame (frame 4) from FK: ");
+   affine_frame_wrt_base = davinci_fwd_solver.get_affine_frame(3); // get frame 4 w/rt base
+   cout<<"affine linear (R): "<<endl;
+   cout<<affine_frame_wrt_base.linear()<<endl;
+   cout<<endl;
+   cout<<"origin: ";
+   cout<<affine_frame_wrt_base.translation().transpose()<<endl;     
+   
+   
   
  /*
      ROS_INFO("frame 1 per wsn FK: ");
@@ -132,13 +161,7 @@ int main(int argc, char **argv) {
    cout<<"origin: ";
    cout<<affine_frame_wrt_base.translation().transpose()<<endl;
    */
-   ROS_INFO("frame 3 per wsn FK: ");
-   affine_frame_wrt_base = davinci_fwd_solver.get_affine_frame(2); // get frame 4 w/rt base
-   cout<<"affine linear (R): "<<endl;
-   cout<<affine_frame_wrt_base.linear()<<endl;
-   cout<<endl;
-   cout<<"origin: ";
-   cout<<affine_frame_wrt_base.translation().transpose()<<endl;
+
    /*
    ROS_INFO("frame 4 per wsn FK: ");
    affine_frame_wrt_base = davinci_fwd_solver.get_affine_frame(3); // get frame 4 w/rt base
