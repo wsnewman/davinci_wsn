@@ -1,6 +1,10 @@
 // davinci_kinematics_test_main.cpp
 // wsn, Sept 2015
 // test function for davinci_kinematics library
+// use as:  
+//FK:     affine_gripper_wrt_base = davinci_fwd_solver.fwd_kin_solve(q_vec);
+//IK:    q123 = ik_solver.q123_from_wrist(w_wrt_base); solves for theta1, theta2, d3 given wrist point (on wrist bend axis)
+
 
 
 #include <davinci_kinematics/davinci_kinematics.h>
@@ -36,6 +40,13 @@ int main(int argc, char **argv) {
   // the real work is done inside the callback function 
   
   ros::Subscriber joint_state_subscriber= n.subscribe("dvrk_psm/joint_states",1,jsCallback);   
+  
+  // this is what we are testing: FK and IK solvers:
+  Davinci_fwd_solver davinci_fwd_solver; //instantiate a forward-kinematics solver    
+  Davinci_IK_solver ik_solver;
+  
+   Eigen::Vector3d w_wrt_base,q123;
+   
   ROS_INFO("waiting to receive joint states");
   while (!g_got_callback)   {
       ros::spinOnce();
@@ -59,10 +70,8 @@ int main(int argc, char **argv) {
     tf::StampedTransform tf_wrist_wrt_base, tf_gripper_tip_wrt_base, tf_frame_wrt_base;
     tf::TransformListener tfListener;
     
-    //Davinci_IK_solver ik_solver;
-    // bring in a fwd solver object:
-    Davinci_fwd_solver davinci_fwd_solver; //instantiate a forward-kinematics solver    
-    //tfListener_ptr = &tfListener;
+
+
     // wait to start receiving valid tf transforms 
     Eigen::Affine3d affine_wrist_wrt_base, affine_gripper_wrt_base, affine_frame_wrt_base;
     bool tferr = true;
@@ -85,13 +94,45 @@ int main(int argc, char **argv) {
     
     ROS_INFO("gripper tip frame  one_tool_tip_link per tf:");
    // now get same from tf:
-   affine_wrist_wrt_base =  davinci_fwd_solver.stampedTFToAffine3d(tf_gripper_tip_wrt_base);
+   affine_gripper_wrt_base =  davinci_fwd_solver.stampedTFToAffine3d(tf_gripper_tip_wrt_base);
 
    cout<<"affine linear (R): "<<endl;
-   cout<<affine_wrist_wrt_base.linear()<<endl;
+   cout<<affine_gripper_wrt_base.linear()<<endl;
    cout<<"origin: ";
-   cout<<affine_wrist_wrt_base.translation().transpose()<<endl;    
-
+   cout<<affine_gripper_wrt_base.translation().transpose()<<endl;    
+   
+   // test IK function:  find wrist point from gripper-tip frame:
+   Eigen::Vector3d z_vec4;
+   w_wrt_base = ik_solver.compute_w_from_tip(affine_gripper_wrt_base,z_vec4);
+   cout<<"origin4 from IK: "<<w_wrt_base.transpose()<<endl;
+   cout<<"z_vec4 from IK: "<<z_vec4.transpose()<<endl;
+   q123 = ik_solver.q123_from_wrist(w_wrt_base);
+   cout<<"q123: "<<q123.transpose()<<endl;
+   // LOOKS LIKE THIS WORKS--RECONFIRM w/ FK:
+   Eigen::VectorXd theta_vec,d_vec;
+   theta_vec.resize(7); //<<q123(0),q123(1),0,0,0,0,0;
+   theta_vec<<0,0,0,0,0,0,0;
+   theta_vec(0) = q123(0);
+   theta_vec(1) = q123(1);
+   cout<<"theta_vec: "<<theta_vec.transpose()<<endl;
+   d_vec.resize(7);
+   d_vec<<0,0,0,0,0,0,0;
+   d_vec(2) = q123(2);
+   cout<<"d_vec: "<<d_vec.transpose()<<endl;
+   
+   //use partial IK soln to compute FK of first three frames:
+   ROS_INFO("calling fwd_kin_solve_DH()");
+   davinci_fwd_solver.fwd_kin_solve_DH(theta_vec, d_vec);
+    ROS_INFO("wrist frame (frame 3) from IK/FK: ");
+   affine_frame_wrt_base = davinci_fwd_solver.get_affine_frame(2); // get frame 4 w/rt base
+   cout<<"affine linear (R): "<<endl;
+   cout<<affine_frame_wrt_base.linear()<<endl;
+   cout<<endl;
+   cout<<"origin: ";
+   cout<<affine_frame_wrt_base.translation().transpose()<<endl;  
+   ROS_INFO("x-axis from above is reference for theta4");
+   //double sval = 
+   
    // now compare to home-brew FK:
  
    ROS_INFO("gripper tip frame from FK: ");   
@@ -101,7 +142,8 @@ int main(int argc, char **argv) {
    cout<<affine_gripper_wrt_base.linear()<<endl;
    cout<<"origin: ";
    cout<<affine_gripper_wrt_base.translation().transpose()<<endl;
-   
+
+ 
    tfListener.lookupTransform("one_psm_base_link", "one_tool_wrist_sca_link", ros::Time(0), tf_wrist_wrt_base);
    cout<<endl;
     ROS_INFO("wrist bend frame one_tool_wrist_sca_link per tf:");
@@ -114,7 +156,7 @@ int main(int argc, char **argv) {
    cout<<"origin: ";
    cout<<affine_wrist_wrt_base.translation().transpose()<<endl;    
    cout<<endl;
-   
+    /*  
    ROS_INFO("wrist frame (frame 3) from FK: ");
    affine_frame_wrt_base = davinci_fwd_solver.get_affine_frame(2); // get frame 4 w/rt base
    cout<<"affine linear (R): "<<endl;
@@ -122,8 +164,8 @@ int main(int argc, char **argv) {
    cout<<endl;
    cout<<"origin: ";
    cout<<affine_frame_wrt_base.translation().transpose()<<endl;   
-   
-  tfListener.lookupTransform("one_psm_base_link", "one_tool_wrist_sca_shaft_link", ros::Time(0), tf_wrist_wrt_base);
+ 
+  tfListener.lookupTransform("one_psm_base_link", "one_tool_wrist_sca_shaft_link", ros::Time(0), tf_frame_wrt_base);
    cout<<endl;
     ROS_INFO("gripper rot frame one_tool_wrist_sca_shaft_link per tf:");
    // now get same from tf:
@@ -135,7 +177,7 @@ int main(int argc, char **argv) {
    cout<<"origin: ";
    cout<<affine_frame_wrt_base.translation().transpose()<<endl;    
    cout<<endl;
-   
+    */
    ROS_INFO("gripper frame (frame 4) from FK: ");
    affine_frame_wrt_base = davinci_fwd_solver.get_affine_frame(3); // get frame 4 w/rt base
    cout<<"affine linear (R): "<<endl;
@@ -144,7 +186,10 @@ int main(int argc, char **argv) {
    cout<<"origin: ";
    cout<<affine_frame_wrt_base.translation().transpose()<<endl;     
    
-   
+
+   w_wrt_base = affine_wrist_wrt_base.translation();
+   q123 = ik_solver.q123_from_wrist(w_wrt_base);
+   cout<<"q123: "<<q123.transpose()<<endl;
   
  /*
      ROS_INFO("frame 1 per wsn FK: ");

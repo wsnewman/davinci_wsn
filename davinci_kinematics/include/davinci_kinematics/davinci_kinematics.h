@@ -237,7 +237,10 @@ public:
     // provide joint angles and prismatic displacement (q_vec[2]) w/rt DaVinci coords
     // will get translated to DH coords to solve fwd kin
     // return affine describing gripper pose w/rt base frame
-    Eigen::Affine3d fwd_kin_solve(const Vectorq7x1& q_vec);   
+    Eigen::Affine3d fwd_kin_solve(const Vectorq7x1& q_vec);  
+    //the following version takes args of DH thetas and d's; used by above fnc
+    Eigen::Affine3d fwd_kin_solve_DH(const Eigen::VectorXd& theta_vec, const Eigen::VectorXd& d_vec);
+
     
     Eigen::Affine3d get_affine_frame(int i) { return affine_products_[i]; }; // return affine of frame i w/rt base
      
@@ -253,6 +256,10 @@ public:
     int ik_solve(Eigen::Affine3d const& desired_flange_pose); // 
     void get_solns(std::vector<Vectorq7x1> &q_solns);
     bool fit_joints_to_range(Vectorq7x1 &qvec);
+    Eigen::Vector3d q123_from_wrist(Eigen::Vector3d wrist_pt);
+    Eigen::Vector3d compute_w_from_tip(Eigen::Affine3d affine_gripper_tip, Eigen::Vector3d &zvec_4);
+
+
     //Eigen::Vector3d wrist_frame0_from_flange_wrt_rarm_mount(Eigen::Affine3d affine_flange_frame);    
     //Eigen::Vector3d wrist_frame1_from_flange_wrt_rarm_mount(Eigen::Affine3d,  Vectorq7x1 q_vec); // bad name
     //Eigen::Vector3d wrist_pt_from_flange_frame(Eigen::Affine3d affine_flange_frame);    

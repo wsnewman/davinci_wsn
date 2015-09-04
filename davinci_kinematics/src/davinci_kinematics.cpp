@@ -130,6 +130,7 @@ void Davinci_fwd_solver::convert_qvec_to_DH_vecs(const Vectorq7x1& q_vec) {
 
     dvals_DH_vec_(2)+=q_vec(2);
     //ROS_INFO("q_vec(2), dvals_DH_vec_(2) = %f, %f",q_vec(2),dvals_DH_vec_(2));
+    ROS_INFO("using theta1, theta2, d3 = %f %f %f", thetas_DH_vec_(0),thetas_DH_vec_(1),dvals_DH_vec_(2));
 
 }
 
@@ -210,26 +211,17 @@ Davinci_fwd_solver::Davinci_fwd_solver() {
 
 }
 
-// fwd-kin fnc: computes gripper frame w/rt base frame given q_vec
-Eigen::Affine3d Davinci_fwd_solver::fwd_kin_solve(const Vectorq7x1& q_vec) {   
-    
-    //use:
+//provide DH theta and d values, return affine pose of gripper tip w/rt base frame
+// also computes all intermediate affine frames, w/rt base frame
+Eigen::Affine3d Davinci_fwd_solver::fwd_kin_solve_DH(const Eigen::VectorXd& theta_vec, const Eigen::VectorXd& d_vec) { 
+    //use or affect these member variables:
     //Eigen::Affine3d affine_frame0_wrt_base_;
     //Eigen::Affine3d affine_gripper_wrt_frame6_;    
     //Eigen::Affine3d affine_gripper_wrt_base_; 
     //vector <Eigen::Affine3d> affines_i_wrt_iminus1_;
     //vector <Eigen::Affine3d> affine_products_;    
-    // and: 
-    
-    //Eigen::Affine3d Davinci_fwd_solver::computeAffineOfDH(double a, double d, double alpha, double theta)
     //    vector <Eigen::Affine3d> affines_i_wrt_iminus1_;
     //  vector <Eigen::Affine3d> affine_products_;
-    
-    //convert q_vec to DH coordinates:
-    //ROS_INFO("converting q to DH vals");
-    convert_qvec_to_DH_vecs(q_vec);
-    //cout<<"theta_DH: "<<thetas_DH_vec_.transpose()<<endl;
-    //cout<<"dvals_DH: "<<dvals_DH_vec_.transpose()<<endl;
     
     affines_i_wrt_iminus1_.resize(7);
     //ROS_INFO("computing successive frame transforms: ");
@@ -237,11 +229,11 @@ Eigen::Affine3d Davinci_fwd_solver::fwd_kin_solve(const Vectorq7x1& q_vec) {
     double a,d,theta,alpha;
     for (int i=0;i<7;i++) {
         a = DH_a_params[i];
-        d = dvals_DH_vec_(i);
+        d = d_vec(i);
         alpha = DH_alpha_params[i];
-        theta = thetas_DH_vec_(i);
+        theta = theta_vec(i);
         //ROS_INFO("i = %d; a,d,alpha,theta = %f %f %f %f",i,a,d,alpha,theta);
-        xform= computeAffineOfDH(DH_a_params[i], dvals_DH_vec_(i), DH_alpha_params[i],thetas_DH_vec_(i));
+        xform= computeAffineOfDH(a, d, alpha,theta);
         affines_i_wrt_iminus1_[i]= xform;
     }
     
@@ -254,6 +246,18 @@ Eigen::Affine3d Davinci_fwd_solver::fwd_kin_solve(const Vectorq7x1& q_vec) {
     
     affine_gripper_wrt_base_ = affine_products_[6]*affine_gripper_wrt_frame6_;
     
+    return affine_gripper_wrt_base_;    
+}
+
+
+// fwd-kin fnc: computes gripper frame w/rt base frame given q_vec
+Eigen::Affine3d Davinci_fwd_solver::fwd_kin_solve(const Vectorq7x1& q_vec) {   
+    //convert q_vec to DH coordinates:
+    //ROS_INFO("converting q to DH vals");
+    convert_qvec_to_DH_vecs(q_vec);
+    //cout<<"theta_DH: "<<thetas_DH_vec_.transpose()<<endl;
+    //cout<<"dvals_DH: "<<dvals_DH_vec_.transpose()<<endl;
+    affine_gripper_wrt_base_ = fwd_kin_solve_DH(thetas_DH_vec_, dvals_DH_vec_);     
     return affine_gripper_wrt_base_;
 }
 
@@ -504,23 +508,74 @@ void Davinci_IK_solver::get_solns(std::vector<Vectorq7x1> &q_solns) {
     q_solns = q_solns_fit_; //q7dof_solns;
 }
 
-/*
-Eigen::Vector3d Davinci_IK_solver::wrist_frame0_from_flange_wrt_rarm_mount(Eigen::Affine3d affine_flange_frame) {
-    Eigen::Vector3d flange_z_axis_wrt_arm_mount;
-    Eigen::Vector3d flange_origin_wrt_arm_mount;
-    Eigen::Vector3d wrist_pt_vec_wrt_arm_mount;
-    Eigen::Matrix3d R_flange_wrt_arm_mount;
+
+//given a 3-D wrist point w/rt base frame (at portal origin), solve for theta1, theta2 and d3;
+// return these in a vector (in that order)
+// "wrist point" is ambiguous.  meaning here is O_3 = O_4 = intersection of tool-shaft rotation and
+// (first) wrist-bend axis
+// THIS LOOKS GOOD--though should be more thoroughly tested
+Eigen::Vector3d Davinci_IK_solver::q123_from_wrist(Eigen::Vector3d wrist_pt) {
+    Eigen::Vector3d q123;
+    double theta1, theta2, d3;
+    d3 = wrist_pt.norm(); //that was easy enough
+    //now, w = R_1/0*R_2/1*[0;0;d3]
+    // or, [wx;wy;wz] = [c1*s2;s1*s2; -c2]*d3
+    Eigen::Vector3d w_prime; // transform w to w_wrt_frame0, then scale it w/ w/d3;
+    //note: in frame0, wrist-point z-value is measured along yaw (jnt1) z-axis;
+    // displacement along z0 axis depends on tool-insertion length, d3, and on rotation of pitch mechanism, theta2
+    // note that theta2 is pi/2 + q_davinci(1);
+    // if range of q_davinci is +/- pi/2, then range of theta2 is 0 to +pi
+    w_prime = wrist_pt/d3;
+    w_prime = affine_frame0_wrt_base_.inverse()*w_prime;
+    //arc cosine of x, in the interval [0,pi] radians...which is interval of interest for theta2, so keep this soln
+    theta2 = acos(-w_prime(2));
+    // s2 will always be >0 for 0<theta2<pi
+    // so atan2 should yield a good answer
+    theta1 = atan2(w_prime(1),w_prime(0));
+    q123(0) = theta1;
+    q123(1) = theta2;
+    q123(2) = d3;
     
-    R_flange_wrt_arm_mount = affine_flange_frame.linear();
-    flange_origin_wrt_arm_mount = affine_flange_frame.translation(); 
-    flange_z_axis_wrt_arm_mount = R_flange_wrt_arm_mount.col(2); 
-    wrist_pt_vec_wrt_arm_mount = flange_origin_wrt_arm_mount-flange_z_axis_wrt_arm_mount*DH_d7;
-        
-    // this much looks correct...deduce wrist point from flange frame, w/rt arm mount frame
-    //cout<<"wrist pt w/rt arm mount from flange pose and IK: "<<wrist_pt_vec_wrt_arm_mount.transpose()<<endl;
-    return wrist_pt_vec_wrt_arm_mount;
+    return q123;
 }
-*/
+
+//defined tool-tip frame such that x-axis is anti-parallel to the gripper-jaw rotation axis
+// "5" frame is frame w/ z-axis through the last rotation joint--rotation of gripper jaws
+// return the wrist point...but also calculate zvec_4
+
+Eigen::Vector3d Davinci_IK_solver::compute_w_from_tip(Eigen::Affine3d affine_gripper_tip, Eigen::Vector3d &zvec_4) {
+  // the following are all expressed w/rt the 0 frame
+  Eigen::Vector3d zvec_tip_frame,xvec_tip_frame,origin_5, zvec_5, xvec_5,origin_4; // zvec_4;   
+  Eigen::Matrix3d R_tip;
+  R_tip = affine_gripper_tip.linear();
+  zvec_tip_frame= R_tip.col(2);
+  xvec_tip_frame= R_tip.col(0);
+  zvec_5 = -xvec_tip_frame; // by definition of tip frame
+  origin_5 = affine_gripper_tip.translation() - gripper_jaw_length*zvec_tip_frame;
+  cout<<"O5: "<<origin_5.transpose()<<endl;
+  Eigen::Vector3d z_perp, z_parallel;
+  // plane P_perp is perpendicular to z_perp and contains O5
+  // plane P_parallel is perpendicular to z_parallel and contains O5, base origin, and z_perp
+  z_perp = zvec_5; //used to define a plane perpendicular to jaw-rotation axis
+  z_parallel = z_perp.cross(origin_5); // O5 - O_0 is same as O5
+  z_parallel = z_parallel/(z_parallel.norm());
+  cout<<"z_parallel: "<<z_parallel.transpose()<<endl;
+  xvec_5 = z_perp.cross(z_parallel); // could be + or -
+  xvec_5 = xvec_5/(xvec_5.norm()); // should not be necessary--already unit length
+  cout<<"xvec_5: "<<xvec_5.transpose()<<endl;
+  
+  Eigen::Vector3d origin_4a,origin_4b;
+  origin_4a = origin_5-dist_from_wrist_bend_axis_to_gripper_jaw_rot_axis*xvec_5;
+  origin_4b = origin_5+dist_from_wrist_bend_axis_to_gripper_jaw_rot_axis*xvec_5;
+  origin_4 = origin_4a;
+  if (origin_4b.norm()<origin_4a.norm()) {
+        origin_4 = origin_4b;
+  }
+  cout<<"origin_4: "<<origin_4.transpose()<<endl;
+  zvec_4 = zvec_5.cross(xvec_5);
+  cout<<"zvec_4: "<<zvec_4.transpose()<<endl;
+  return origin_4;
+}
 
 
 bool Davinci_IK_solver::fit_q_to_range(double q_min, double q_max, double &q) {
