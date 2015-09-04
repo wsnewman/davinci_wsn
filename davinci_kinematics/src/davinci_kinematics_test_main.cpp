@@ -5,7 +5,10 @@
 //FK:     affine_gripper_wrt_base = davinci_fwd_solver.fwd_kin_solve(q_vec);
 //IK:    q123 = ik_solver.q123_from_wrist(w_wrt_base); solves for theta1, theta2, d3 given wrist point (on wrist bend axis)
 
-
+//debug: FIX THIS
+// zvec_4 from FK points along -yvec of tf frame one_tool_main_link (at tool rot=0)
+//  AND zvec_4 from FK points along y_vec of frame3 from FK at tool rot=0
+//  need an offset angle???
 
 #include <davinci_kinematics/davinci_kinematics.h>
  #include <tf/transform_listener.h>
@@ -156,7 +159,20 @@ int main(int argc, char **argv) {
    cout<<"origin: ";
    cout<<affine_wrist_wrt_base.translation().transpose()<<endl;    
    cout<<endl;
-    /*  
+   
+   tfListener.lookupTransform("one_psm_base_link", "one_tool_main_link", ros::Time(0), tf_frame_wrt_base);
+   cout<<endl;
+    ROS_INFO("one_tool_main_link frame per tf:");
+   // now get same from tf:
+   affine_frame_wrt_base =  davinci_fwd_solver.stampedTFToAffine3d(tf_frame_wrt_base);
+
+   cout<<"affine linear (R): "<<endl;
+   cout<<affine_frame_wrt_base.linear()<<endl;
+   cout<<endl;
+   cout<<"origin: ";
+   cout<<affine_frame_wrt_base.translation().transpose()<<endl;    
+   cout<<endl;  
+
    ROS_INFO("wrist frame (frame 3) from FK: ");
    affine_frame_wrt_base = davinci_fwd_solver.get_affine_frame(2); // get frame 4 w/rt base
    cout<<"affine linear (R): "<<endl;
@@ -177,7 +193,7 @@ int main(int argc, char **argv) {
    cout<<"origin: ";
    cout<<affine_frame_wrt_base.translation().transpose()<<endl;    
    cout<<endl;
-    */
+
    ROS_INFO("gripper frame (frame 4) from FK: ");
    affine_frame_wrt_base = davinci_fwd_solver.get_affine_frame(3); // get frame 4 w/rt base
    cout<<"affine linear (R): "<<endl;
