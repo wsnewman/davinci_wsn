@@ -2,7 +2,7 @@
  * File:   davinci_kinematics.h
  * Author: wsn
  *
- * Created Sept 2, 2015, based on baxter_kinematics.h
+ * Created Sept 2, 2015
  */
 
 
@@ -231,7 +231,8 @@ public:
     
     //generic: provide DH values, compute transform, expressed as Eigen::Affine3d
     void convert_qvec_to_DH_vecs(const Vectorq7x1& q_vec);
-    
+    Vectorq7x1 convert_DH_vecs_to_qvec(const Eigen::VectorXd &thetas_DH_vec, const Eigen::VectorXd &dvals_DH_vec);
+
     Eigen::Affine3d computeAffineOfDH(double a, double d, double alpha, double theta);
     
     // provide joint angles and prismatic displacement (q_vec[2]) w/rt DaVinci coords
@@ -251,76 +252,22 @@ class Davinci_IK_solver:Davinci_fwd_solver  {
 public:
     Davinci_IK_solver(); //constructor; 
 
-    //Eigen::Affine3d get_flange_frame_from_tool_frame(Eigen::Affine3d tool_frame) { return tool_frame*A_tool_wrt_flange_inv_; }
     // return the number of valid solutions; actual vector of solutions will require an accessor function
-    int ik_solve(Eigen::Affine3d const& desired_flange_pose); // 
     void get_solns(std::vector<Vectorq7x1> &q_solns);
     bool fit_joints_to_range(Vectorq7x1 &qvec);
     Eigen::Vector3d q123_from_wrist(Eigen::Vector3d wrist_pt);
     Eigen::Vector3d compute_w_from_tip(Eigen::Affine3d affine_gripper_tip, Eigen::Vector3d &zvec_4);
+    int  ik_solve(Eigen::Affine3d const& desired_hand_pose);
+    Vectorq7x1 get_soln() {return q_vec_soln_;};
 
-
-    //Eigen::Vector3d wrist_frame0_from_flange_wrt_rarm_mount(Eigen::Affine3d affine_flange_frame);    
-    //Eigen::Vector3d wrist_frame1_from_flange_wrt_rarm_mount(Eigen::Affine3d,  Vectorq7x1 q_vec); // bad name
-    //Eigen::Vector3d wrist_pt_from_flange_frame(Eigen::Affine3d affine_flange_frame);    
-    //here is identical fnc, w/ better name
-    //Eigen::Vector3d wrist_pt_wrt_frame1_of_flange_des_and_qs0(Eigen::Affine3d affine_flange_frame, Vectorq7x1 q_vec);
-    //Eigen::MatrixXd get_Jacobian(const Vectorq6x1& q_vec);
-      //given desired flange pose, fill up solns for q1, q2, q3 based on wrist position
-    
-    // the following functions are approximate--using spherical-wrist approximation
-    // i.e., ignoring 1cm offset of wrist point from forearm axis
-    
-    // given desired hand pose, find all viable IK solns, indexed by q_s0 values, w/ resolution DQS0    
-    //int ik_solve_approx(Eigen::Affine3d const& desired_flange_pose,std::vector<Vectorq7x1> &q_solns); 
-    
-    // this version takes arm of desired hand pose w/rt torso frame
-    //int ik_solve_approx_wrt_torso(Eigen::Affine3d const& desired_flange_pose,std::vector<Vectorq7x1> &q_solns);
-    //int ik_wristpt_solve_approx_wrt_torso(Eigen::Affine3d const& desired_flange_pose_wrt_torso,std::vector<Vectorq7x1> &q_solns); 
-    
-    //int ik_solve_approx_elbow_orbit_from_flange_pose_wrt_torso(Eigen::Affine3d const& desired_flange_pose_wrt_torso,std::vector<std::vector<Eigen::VectorXd> > &path_options);
-    //int ik_solve_approx_elbow_orbit_plus_qdot_s0_from_flange_pose_wrt_torso(Vectorq7x1 q_start, std::vector<std::vector<Eigen::VectorXd> > &path_options);  
-    // in this version, soln ONLY for specified q_s0;  specify q_s0 and desired hand pose, w/rt torso
-    // expect from 0 to 4 solutions at given q_s0    
-    //int ik_solve_approx_wrt_torso_given_qs0(Eigen::Affine3d const& desired_flange_pose_wrt_torso,double q_s0, std::vector<Vectorq7x1> &q_solns);
-    //int ik_wrist_solve_approx(Eigen::Affine3d const& desired_flange_pose,std::vector<Vectorq7x1> &q_solns_123); // given desired hand pose, find all viable IK solns
-    
-    //function to find precise values of joint angles q1, q2, q3 to match desired wrist position, implied by desired_flange_pose
-    //provide q123_approx; this function will take q_s0 and q_forearm as specified, and q_s1, q_humerus and q_elbow as approximated,
-    // and will refine q_s1, q_humerus and q_elbow to attempt a precise fit to desired wrist position;
-    // improved soln is returned in q123_precise
-    //double precise_soln_q123(Eigen::Affine3d const& desired_flange_pose,Vectorq7x1 q123_approx, Vectorq7x1 &q123_precise);
-    //fnc to find q_s0_min and q_s0_max given desired hand pose
-    //double compute_qs0_ctr(Eigen::Affine3d const& desired_flange_pose);
-    
-// put together [q_s1,q_humerus,q_elbow] solns as fnc (q_s0)
-// there will be 0, 1 or 2 solutions;
-// pack these into a 7x1 vector--just leave wrist DOFs =0 for now;
-// return "true" if at least 1 valid soln within joint ranges    
-    //bool compute_q123_solns(Eigen::Affine3d const& desired_flange_pose, double q_s0, std::vector<Vectorq7x1> &q_solns);
-    //double solve_for_theta2(double q1,Eigen::Vector3d w_des);
-    
-    //bool solve_for_elbow_ang(Eigen::Vector3d w_wrt_1, double  &q_elbow);  
-    //given desired wrist point, w/rt frame 1, and given q_elbow, solve for q_humerus
-    //bool solve_for_humerus_ang(Eigen::Vector3d w_wrt_1,double q_elbow, double q_humerus[2]);
-    //bool solve_for_s1_ang(Eigen::Vector3d w_wrt_1,double q_elbow, double q_humerus, double &q_s1);   
-    //bool solve_for_theta3(Eigen::Vector3d w_wrt_1,double r_goal, double q3_solns[2]); 
-
-    //bool solve_spherical_wrist(Vectorq7x1 q_in,Eigen::Matrix3d R_des, std::vector<Vectorq7x1> &q_solns);  
-    //bool update_spherical_wrist(Vectorq7x1 q_in,Eigen::Matrix3d R_des, Vectorq7x1 &q_precise);
-   // bool improve_7dof_soln(Eigen::Affine3d const& desired_flange_pose_wrt_arm_mount, Vectorq7x1 q_in, Vectorq7x1 &q_7dof_precise);
-   
 private:
     bool fit_q_to_range(double q_min, double q_max, double &q);    
     std::vector<Vectorq7x1> q7dof_solns_;
     std::vector<Vectorq7x1> q_solns_fit_;
-    //Eigen::Matrix4d A_mats[7], A_mat_products[7], A_tool; // note: tool A must also handle diff DH vs URDF frame-7 xform
-    //double L_humerus_;
-    //double L_forearm_;
-    //double phi_elbow_;
-    //double phi_shoulder_;
+    Vectorq7x1 q_vec_soln_;
+ 
   
-    //Eigen::MatrixXd Jacobian;
+    //Eigen::MatrixXd Jacobian_;
 };
 
 #endif	/* DAVINCI_KIN_H */

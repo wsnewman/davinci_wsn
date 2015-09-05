@@ -3,16 +3,13 @@
 // test function for davinci_kinematics library
 // use as:  
 //FK:     affine_gripper_wrt_base = davinci_fwd_solver.fwd_kin_solve(q_vec);
-//IK:    q123 = ik_solver.q123_from_wrist(w_wrt_base); solves for theta1, theta2, d3 given wrist point (on wrist bend axis)
+//IK:       ik_solver.ik_solve(affine_gripper_wrt_base);
+//            q_vec_ik = ik_solver.get_soln();
 
-//debug: FIX THIS
-// zvec_4 from FK points along -yvec of tf frame one_tool_main_link (at tool rot=0)
-//  AND zvec_4 from FK points along y_vec of frame3 from FK at tool rot=0
-//  need an offset angle???
+// IK has solns off a bit...due to round-off??
 
 #include <davinci_kinematics/davinci_kinematics.h>
- #include <tf/transform_listener.h>
-//#include <tf/Quaternion.h>
+#include <tf/transform_listener.h>
 #include <tf/LinearMath/Quaternion.h>
 #include <Eigen/Geometry> 
 #include <sensor_msgs/JointState.h>

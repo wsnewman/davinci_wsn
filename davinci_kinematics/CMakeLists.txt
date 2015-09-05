@@ -18,10 +18,12 @@ catkin_simple()
 
 # Libraries
 cs_add_library(davinci_kinematics src/davinci_kinematics.cpp)   
-
+cs_add_library(davinci_joint_publisher src/davinci_joint_publisher.cpp) 
 # Executables
 cs_add_executable(test_davinci_ik src/davinci_kinematics_test_main.cpp)
+cs_add_executable(test_davinci_joint_pub src/davinci_joint_publisher_test_main.cpp)
 target_link_libraries(test_davinci_ik davinci_kinematics ${catkin_LIBRARIES})
+target_link_libraries(test_davinci_joint_pub davinci_joint_publisher ${catkin_LIBRARIES})
 # target_link_library(example my_lib)
 
 cs_install()

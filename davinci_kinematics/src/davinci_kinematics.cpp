@@ -1,6 +1,6 @@
 // davinci_kinematics implementation file; start w/ fwd kin
 
-//"include" path--should just be <baxter_kinematics/baxter_kinematics.h>, at least for modules outside this package
+//"include" path--should just be <davinci_kinematics/davinci_kinematics.h>, at least for modules outside this package
 #include <davinci_kinematics/davinci_kinematics.h>
 
 using namespace std;
@@ -67,7 +67,6 @@ Eigen::Affine3f  Davinci_fwd_solver::stampedTFToEigen(const tf::StampedTransform
     return e;
 }
 
- //   geometry_msgs::Pose transformEigenAffine3fToPose(Eigen::Affine3f e);
  geometry_msgs::Pose Davinci_fwd_solver::transformEigenAffine3fToPose(Eigen::Affine3f e) {
     Eigen::Vector3f Oe;
     Eigen::Matrix3f Re;
@@ -109,7 +108,7 @@ Eigen::Affine3f  Davinci_fwd_solver::stampedTFToEigen(const tf::StampedTransform
 }
 
  //given a vector of joint states in DaVinci coords, convert these into
- // equivalen DH parameters, theta and d
+ // equivalent DH parameters, theta and d
 void Davinci_fwd_solver::convert_qvec_to_DH_vecs(const Vectorq7x1& q_vec) {
     //    Eigen::VectorXd thetas_DH_vec_,dvals_DH_vec_;
     //Eigen::VectorXd theta_DH_offsets_,dval_DH_offsets_;
@@ -133,7 +132,20 @@ void Davinci_fwd_solver::convert_qvec_to_DH_vecs(const Vectorq7x1& q_vec) {
     ROS_INFO("using theta1, theta2, d3 = %f %f %f", thetas_DH_vec_(0),thetas_DH_vec_(1),dvals_DH_vec_(2));
 
 }
+    Eigen::VectorXd thetas_DH_vec_,dvals_DH_vec_;
 
+Vectorq7x1 Davinci_fwd_solver::convert_DH_vecs_to_qvec(const Eigen::VectorXd &thetas_DH_vec, 
+        const Eigen::VectorXd &dvals_DH_vec) {
+    //    Eigen::VectorXd thetas_DH_vec_,dvals_DH_vec_;
+    //Eigen::VectorXd theta_DH_offsets_,dval_DH_offsets_;
+    Vectorq7x1 q_vec;
+    for (int i=0;i<7;i++) {
+        q_vec(i) = thetas_DH_vec(i)-theta_DH_offsets_(i);
+    }
+    q_vec(2) = dvals_DH_vec(2)-dval_DH_offsets_(2);
+    return q_vec;
+
+}
      
 Eigen::Affine3d Davinci_fwd_solver::computeAffineOfDH(double a, double d, double alpha, double theta){
      Eigen::Affine3d affine_DH;
@@ -197,6 +209,7 @@ Davinci_fwd_solver::Davinci_fwd_solver() {
    affine_gripper_wrt_frame6_.linear() = R_gripper_wrt_frame6;
    affine_gripper_wrt_frame6_.translation() = Origin_gripper_wrt_frame6;   
    */
+   //short version of above:
    affine_gripper_wrt_frame6_ = computeAffineOfDH(0, gripper_jaw_length, 0,-M_PI/2);
    
    theta_DH_offsets_.resize(7);
@@ -263,243 +276,12 @@ Eigen::Affine3d Davinci_fwd_solver::fwd_kin_solve(const Vectorq7x1& q_vec) {
 
 
 
-    // these fncs also include transform from flange to tool frame
-//    Eigen::Affine3d fwd_kin_tool_wrt_r_arm_mount_solve(const Vectorq7x1& q_vec); // given vector of q angles, compute fwd kin of tool w/rt right-arm mount 
-//    Eigen::Affine3d fwd_kin_tool_wrt_r_arm_mount_solve_approx(const Vectorq7x1& q_vec);//version w/ spherical-wrist approx
-//    Eigen::Affine3d fwd_kin_tool_wrt_torso_solve(const Vectorq7x1& q_vec); //rtns pose w/rt torso frame (base frame) 
-
-/*
-Eigen::Affine3d Davinci_fwd_solver::fwd_kin_tool_wrt_r_arm_mount_solve(const Vectorq7x1& q_vec) {
-    Eigen::Affine3d A_flange_wrt_r_arm_mount;
-    Eigen::Affine3d A_tool_wrt_r_arm_mount;
-    A_flange_wrt_r_arm_mount = fwd_kin_flange_wrt_r_arm_mount_solve(q_vec);
-    A_tool_wrt_r_arm_mount = A_flange_wrt_r_arm_mount*A_tool_wrt_flange_;
-    return A_tool_wrt_r_arm_mount;
-}
-Eigen::Affine3d Davinci_fwd_solver::fwd_kin_tool_wrt_r_arm_mount_solve_approx(const Vectorq7x1& q_vec) {
-    Eigen::Affine3d A_flange_wrt_r_arm_mount;
-    Eigen::Affine3d A_tool_wrt_r_arm_mount;
-    A_flange_wrt_r_arm_mount = fwd_kin_flange_wrt_r_arm_mount_solve_approx(q_vec);
-    A_tool_wrt_r_arm_mount = A_flange_wrt_r_arm_mount*A_tool_wrt_flange_;
-    return A_tool_wrt_r_arm_mount;
-}
-
-Eigen::Affine3d Davinci_fwd_solver::fwd_kin_tool_wrt_torso_solve(const Vectorq7x1& q_vec) {
-    Eigen::Affine3d A_flange_wrt_torso;
-    Eigen::Affine3d A_tool_wrt_torso;
-    A_flange_wrt_torso = fwd_kin_flange_wrt_torso_solve(q_vec);
-    A_tool_wrt_torso = A_flange_wrt_torso*A_tool_wrt_flange_;
-    return A_tool_wrt_torso;
-}
-
-
-//    Eigen::Affine3d fwd_kin_flange_wrt_r_arm_mount_solve(const Vectorq7x1& q_vec); // given vector of q angles, compute fwd kin
-//    Eigen::Affine3d fwd_kin_flange_wrt_r_arm_mount_solve_approx(const Vectorq7x1& q_vec);//version w/ spherical-wrist approx
-//    Eigen::Affine3d fwd_kin_flange_wrt_torso_solve(const Vectorq7x1& q_vec); //rtns pose w/rt torso frame (base frame)
-Eigen::Affine3d Davinci_fwd_solver::fwd_kin_flange_wrt_r_arm_mount_solve(const Vectorq7x1& q_vec) {
-    Eigen::Matrix4d M;
-    M = fwd_kin_solve_(q_vec);
-    Eigen::Affine3d A(M);
-    return A;
-}
-
-Eigen::Affine3d Davinci_fwd_solver::fwd_kin_flange_wrt_r_arm_mount_solve_approx(const Vectorq7x1& q_vec) {
-    Eigen::Matrix4d M;
-    M = fwd_kin_solve_approx_(q_vec);
-    Eigen::Affine3d A(M);
-    return A;
-}
-
-Eigen::Affine3d Davinci_fwd_solver::fwd_kin_flange_wrt_torso_solve(const Vectorq7x1& q_vec) {
-    Eigen::Matrix4d M;
-    M = fwd_kin_solve_(q_vec);
-    M = A_torso_to_rarm_mount_*M;
-    Eigen::Affine3d A(M);
-    return A;
-}
-
-
-
-Eigen::Matrix4d Davinci_fwd_solver::get_wrist_frame() {
-    return A_mat_products_[5]; // frames 4 and 5 have coincident origins
-}
-
-Eigen::Matrix4d Davinci_fwd_solver::get_shoulder_frame() {
-    return A_mat_products_[0]; // frame 1 has coincident origin, since a2=d2=0
-}
-
-Eigen::Matrix4d Davinci_fwd_solver::get_elbow_frame() {
-    return A_mat_products_[3]; // frames 2 and 3 have coincident origins
-}
-
-Eigen::Matrix4d Davinci_fwd_solver::get_flange_frame() {
-    return A_mat_products_[6];
-}
-
-
-Eigen::Matrix4d Davinci_fwd_solver::get_shoulder_frame_approx() {
-    return A_mat_products_approx_[0]; // frame 1 has coincident origin, since a2=d2=0
-}
-
-Eigen::Matrix4d Davinci_fwd_solver::get_elbow_frame_approx() {
-    return A_mat_products_approx_[3]; // frames 2 and 3 have coincident origins
-}
-
-Eigen::Matrix4d Davinci_fwd_solver::get_wrist_frame_approx() {
-    Eigen::Matrix4d A_wrist;
-    A_wrist = A_mat_products_approx_[5];
-    //cout<<"A_wrist from get_wrist: "<<endl;
-    //cout<<A_wrist<<endl;
-    return A_wrist; // frames 4 and 5 have coincident origins
-}
-
-Eigen::Matrix4d Davinci_fwd_solver::get_flange_frame_approx() {
-    return A_mat_products_approx_[6];
-}
-
-//fwd kin from frame 1 to wrist pt
-Eigen::Vector3d Davinci_fwd_solver::get_wrist_coords_wrt_frame1(const Vectorq7x1& q_vec) {
-    Eigen::Matrix4d A_shoulder_to_wrist;
-    fwd_kin_solve_(q_vec);
-    A_shoulder_to_wrist = A_mats_[1]*A_mats_[2]*A_mats_[3]*A_mats_[4];
-    Eigen::Vector3d w_wrt_1 = A_shoulder_to_wrist.block<3, 1>(0, 3);
-    return w_wrt_1;
-}
-*/
-
-/* Wrist Jacobian:  somewhat odd; restricted to q_s1, q_humerus and q_elbow
- * return a 3x3 Jacobian relating dq to delta wrist point coords, w/rt q_s1, q_humerus and q_elbow*/
-// wrist coords are expressed w/rt frame1
-// if q_forearm is known, use it--else set it to 0 or other approx
-
-/*
-Eigen::Matrix3d Davinci_fwd_solver::get_wrist_Jacobian_3x3(double q_s1, double q_humerus, double q_elbow, double q_forearm) {
-    Vectorq7x1 q_vec;
-    for (int i=0;i<7;i++) q_vec(i)=0.0;
-    q_vec(1) = q_s1;
-    q_vec(2) = q_humerus;
-    q_vec(3) = q_elbow;
-    q_vec(4) = q_forearm;
-    
-    Eigen::Matrix4d A_mats_3dof[5];
-    Eigen::Matrix4d A_mat_products_3dof[5];
-
-    //Eigen::Matrix4d A = Eigen::Matrix4d::Identity();
-    Eigen::Matrix4d Ai;
-    Eigen::Matrix3d R;
-    //Eigen::Vector3d p,t1,t2;;
-    Eigen::Matrix3d Jw1_trans;
-    Eigen::Matrix3d Jw1_ang;
-    Eigen::Matrix3d Origins;
-    //Eigen::Matrix3d Rvecs;
-    Eigen::Vector3d zvec,rvec,wvec,Oi;
-    //populate 5 A matrices and their products; need 5 just to get to wrist point, but can assume q_forearm=0, q_wrist_bend=0
-    // note--starting from S1 frame, skipping frame 0
-    for (int i=0;i<5;i++) {
-        A_mats_3dof[i] = compute_A_of_DH(i+1, q_vec(i+1));
-    }
-        
-    A_mat_products_3dof[0] = A_mats_3dof[0];
-    //cout<<"A_mat_products_3dof[0]"<<endl;
-    //cout<<A_mat_products_3dof[0]<<endl;
-    for (int i=1;i<5;i++) {
-        A_mat_products_3dof[i] = A_mat_products_3dof[i-1]*A_mats_3dof[i];
-    }
-    wvec = A_mat_products_3dof[4].block<3, 1>(0, 3); //strip off wrist coords
-    //cout<<"wvec w/rt frame1: "<<wvec.transpose()<<endl;
-    
-    //compute the angular Jacobian, using z-vecs from each frame; first frame is just [0;0;1]
-    zvec<<0,0,1;
-    Jw1_ang.block<3, 1>(0, 0) = zvec; // and populate J_ang with them; at present, this is not being returned
-    Oi<<0,0,0;
-    Origins.block<3, 1>(0, 0) = Oi;
-    for (int i=1;i<3;i++) {
-        zvec = A_mat_products_3dof[i-1].block<3, 1>(0, 2); //%strip off z axis of each previous frame; note subscript slip  
-        Jw1_ang.block<3, 1>(0, i) = zvec; // and populate J_ang with them;
-        Oi = A_mat_products_3dof[i-1].block<3, 1>(0, 3); //origin of i'th frame
-        Origins.block<3, 1>(0, i) = Oi;
-    }    
-    //now, use the zvecs to help compute J_trans
-    for (int i=0;i<3;i++) {
-        zvec = Jw1_ang.block<3, 1>(0, i); //%recall z-vec of current axis     
-        Oi =Origins.block<3, 1>(0, i); //origin of i'th frame
-        rvec = wvec - Oi; //%vector from origin of i'th frame to wrist pt 
-        //Rvecs.block<3, 1>(0, i) = rvec; //save these?
-        //t1 = zvecs.block<3, 1>(0, i);
-        //t2 = rvecs.block<3, 1>(0, i);
-        Jw1_trans.block<3, 1>(0, i) = zvec.cross(rvec);  
-        //cout<<"frame "<<i<<": zvec = "<<zvec.transpose()<<"; Oi = "<<Oi.transpose()<<endl;
-    }     
-    //cout<<"J_ang: "<<endl;
-    //cout<<Jw1_ang<<endl;
-    return Jw1_trans;
-}
-*/
-
-// confirmed this function is silly...
-// can easily transform Affine frames or A4x4 frames w:  Affine_torso_to_rarm_mount_.inverse()*pose_wrt_torso;
-
-    /*
-     * Eigen::Affine3d Davinci_fwd_solver::transform_affine_from_torso_frame_to_arm_mount_frame(Eigen::Affine3d pose_wrt_torso) {
-    //convert desired_hand_pose into equiv w/rt right-arm mount frame:
-
-    Eigen::Affine3d desired_pose_wrt_arm_mount,desired_pose_wrt_arm_mount2;
-    Eigen::Matrix3d R_hand_des_wrt_torso = pose_wrt_torso.linear();
-    Eigen::Vector3d O_hand_des_wrt_torso = pose_wrt_torso.translation();
-    Eigen::Vector3d O_hand_des_wrt_arm_mount;
-    Eigen::Vector3d O_arm_mount_wrt_torso = A_torso_to_rarm_mount_.col(3).head(3);
-    Eigen::Matrix3d R_arm_mount_wrt_torso = A_torso_to_rarm_mount_.block<3, 3>(0, 0);
-    
-    desired_pose_wrt_arm_mount.linear() = R_arm_mount_wrt_torso.transpose()*R_hand_des_wrt_torso;
- 
-    O_hand_des_wrt_arm_mount = R_arm_mount_wrt_torso.transpose()* O_hand_des_wrt_torso 
-            - R_arm_mount_wrt_torso.transpose()* O_arm_mount_wrt_torso; //desired hand origin w/rt arm_mount frame
-           
-    desired_pose_wrt_arm_mount.translation() = O_hand_des_wrt_arm_mount;  
-    cout<<"input pose w/rt torso: R"<<endl;
-    cout<<pose_wrt_torso.linear()<<endl;
-    cout<<"origin of des frame w/rt torso: "<<pose_wrt_torso.translation().transpose()<<endl;
-    
-    cout<<"input pose w/rt arm-mount frame: R"<<endl;
-    cout<<desired_pose_wrt_arm_mount.linear()<<endl;    
-    cout<<"origin of des frame w/rt arm-mount frame: "<<desired_pose_wrt_arm_mount.translation().transpose()<<endl;
-
-    // now, try easier approach:
-    desired_pose_wrt_arm_mount2 = Affine_torso_to_rarm_mount_.inverse()*pose_wrt_torso;
-     cout<<"input pose w/rt arm-mount frame, method 2: R"<<endl;
-    cout<<desired_pose_wrt_arm_mount2.linear()<<endl;    
-    cout<<"origin of des frame w/rt arm-mount frame, method 2: "<<desired_pose_wrt_arm_mount2.translation().transpose()<<endl;   
-
-    
-    return desired_pose_wrt_arm_mount;
-    return Affine_torso_to_rarm_mount_.inverse()*pose_wrt_torso;
-}
-*/
-
-
-
 
 //IK methods:
 Davinci_IK_solver::Davinci_IK_solver() {
     //constructor: 
     //ROS_INFO("Davinci_IK_solver constructor");
-    /*
-    L_humerus_ = 0.37082; // diag distance from shoulder to elbow; //DH_d_params[2];
-    double L3 = DH_d3;
-    double A3 = DH_a3;
-    //L_humerus_ = sqrt(A3 * A3 + L3 * L3);
-    L_forearm_ = DH_d5; // d-value is approx len, ignoring offset; 0.37442; // diag dist from elbow to wrist; //sqrt(A3 * A3 + L3 * L3);
-    
-    phi_shoulder_= acos((-A3*A3+L_humerus_*L_humerus_+L3*L3)/(2.0*L3*L_humerus_));
-    // the following is redundant w/ fwd_solver instantiation, but repeat here, in case fwd solver
-    // is not created
-    //A_rarm_mount_to_r_lower_forearm_ = Eigen::Matrix4d::Identity();
-    //A_rarm_mount_to_r_lower_forearm_(0,3) = rmount_to_r_lower_forearm_x;
-    //A_rarm_mount_to_r_lower_forearm_(1,3) = rmount_to_r_lower_forearm_y;
-    //A_rarm_mount_to_r_lower_forearm_(2,3) = rmount_to_r_lower_forearm_z;  
-    //cout<<"A_rarm_mount_to_r_lower_forearm"<<endl; // this was populated by inherited fwd_kin constructor
-    //cout<<A_rarm_mount_to_r_lower_forearm_<<endl;
-     * */
+
 }
 
 //accessor function to get all solutions
@@ -552,17 +334,17 @@ Eigen::Vector3d Davinci_IK_solver::compute_w_from_tip(Eigen::Affine3d affine_gri
   xvec_tip_frame= R_tip.col(0);
   zvec_5 = -xvec_tip_frame; // by definition of tip frame
   origin_5 = affine_gripper_tip.translation() - gripper_jaw_length*zvec_tip_frame;
-  cout<<"O5: "<<origin_5.transpose()<<endl;
+  //cout<<"O5: "<<origin_5.transpose()<<endl;
   Eigen::Vector3d z_perp, z_parallel;
   // plane P_perp is perpendicular to z_perp and contains O5
   // plane P_parallel is perpendicular to z_parallel and contains O5, base origin, and z_perp
   z_perp = zvec_5; //used to define a plane perpendicular to jaw-rotation axis
   z_parallel = z_perp.cross(origin_5); // O5 - O_0 is same as O5
   z_parallel = z_parallel/(z_parallel.norm());
-  cout<<"z_parallel: "<<z_parallel.transpose()<<endl;
+  //cout<<"z_parallel: "<<z_parallel.transpose()<<endl;
   xvec_5 = z_perp.cross(z_parallel); // could be + or -
   xvec_5 = xvec_5/(xvec_5.norm()); // should not be necessary--already unit length
-  cout<<"xvec_5: "<<xvec_5.transpose()<<endl;
+  //cout<<"xvec_5: "<<xvec_5.transpose()<<endl;
   
   Eigen::Vector3d origin_4a,origin_4b;
   origin_4a = origin_5-dist_from_wrist_bend_axis_to_gripper_jaw_rot_axis*xvec_5;
@@ -571,9 +353,9 @@ Eigen::Vector3d Davinci_IK_solver::compute_w_from_tip(Eigen::Affine3d affine_gri
   if (origin_4b.norm()<origin_4a.norm()) {
         origin_4 = origin_4b;
   }
-  cout<<"origin_4: "<<origin_4.transpose()<<endl;
+  //cout<<"origin_4: "<<origin_4.transpose()<<endl;
   zvec_4 = zvec_5.cross(xvec_5);
-  cout<<"zvec_4: "<<zvec_4.transpose()<<endl;
+  //cout<<"zvec_4: "<<zvec_4.transpose()<<endl;
   return origin_4;
 }
 
@@ -608,7 +390,90 @@ bool Davinci_IK_solver::fit_joints_to_range(Vectorq7x1 &qvec) {
 }
 
 int Davinci_IK_solver::ik_solve(Eigen::Affine3d const& desired_hand_pose) // solve IK
-{ return 0; // dummy
+{ 
+   Eigen::Vector3d z_vec4,z4_wrt_3,O_6_wrt_4,xvec6_wrt_5;
+   Eigen::Vector3d w_wrt_base,q123;
+   Eigen::VectorXd theta_vec,d_vec;   
+   Eigen::Affine3d affine_frame_wrt_base,affine_frame6_wrt_4,affine_frame6_wrt_5,fk_gripper_frame;
+   //first step: get the wrist-bend origin on tool shaft from desired gripper pose:
+   w_wrt_base = compute_w_from_tip(desired_hand_pose,z_vec4);
+   //cout<<"origin4 from IK: "<<w_wrt_base.transpose()<<endl;
+   //cout<<"z_vec4 from IK: "<<z_vec4.transpose()<<endl;
+   
+   //next step: get theta1, theta2, d3 soln from wrist position:
+   q123 = q123_from_wrist(w_wrt_base);
+   //cout<<"q123: "<<q123.transpose()<<endl;
+   
+   //compute FK of this soln:
+   theta_vec.resize(7); //<<q123(0),q123(1),0,0,0,0,0;
+   theta_vec<<0,0,0,0,0,0,0;
+   theta_vec(0) = q123(0);
+   theta_vec(1) = q123(1);
+   //cout<<"theta_vec: "<<theta_vec.transpose()<<endl;
+   d_vec.resize(7);
+   d_vec<<0,0,0,0,0,0,0;
+   d_vec(2) = q123(2);
+   //cout<<"d_vec: "<<d_vec.transpose()<<endl;
+   
+   //use partial IK soln to compute FK of first three frames:
+   //ROS_INFO("calling fwd_kin_solve_DH()");
+   fwd_kin_solve_DH(theta_vec, d_vec);
+   // ROS_INFO("wrist frame (frame 3) from IK/FK: ");
+   affine_frame_wrt_base = get_affine_frame(2); // this frame depends only on 1st 3 var's
+   Eigen::Matrix3d R_3_wrt_base;
+   R_3_wrt_base = affine_frame_wrt_base.linear();
+   //cout<<"affine linear (R): "<<endl;
+   //cout<<R_3_wrt_base<<endl;
+   //cout<<endl;
+   //use this to express z_vec4 in frame-3 coords.  Expect z-component to be zero
+   z4_wrt_3 = R_3_wrt_base.transpose()*z_vec4;
+   //cout<<"z4 w/rt frame 3: "<<z4_wrt_3.transpose()<<endl;
+   double theta4 = atan2(z4_wrt_3(1),z4_wrt_3(0))+M_PI/2.0;
+   //ROS_INFO("theta4 = %f",theta4);
+   
+   //recompute FK for 1st 4 variables:
+   theta_vec(3) = theta4;   
+   fwd_kin_solve_DH(theta_vec, d_vec);  
+   // get frame 4, which depends on 1st 4 vars:
+   affine_frame_wrt_base = get_affine_frame(3);  
+   
+   //compute transform frame 6 wrt frame 4:
+   // A_{g/base} = A_{4/base}*A_{6/4}*A_{g/6}
+   // so, A_{4/base}_inv * A_{g/base} * A_{g/6}_inv = A_{4/base}
+   affine_frame6_wrt_4 = affine_frame_wrt_base.inverse()*desired_hand_pose*affine_gripper_wrt_frame6_.inverse();
+   O_6_wrt_4 = affine_frame6_wrt_4.translation();
+   double theta5 =  atan2(O_6_wrt_4(1),O_6_wrt_4(0));
+   //ROS_INFO("theta5 = %f",theta5);   
+   
+   theta_vec(4) = theta5;   
+   fwd_kin_solve_DH(theta_vec, d_vec);  
+   // get frame 5, which depends on 1st 5 vars:
+   affine_frame_wrt_base = get_affine_frame(4); 
+   affine_frame6_wrt_5= affine_frame_wrt_base.inverse()*desired_hand_pose*affine_gripper_wrt_frame6_.inverse();
+   //cout<<"origin frame 6 wrt 5: "<<affine_frame6_wrt_5.translation().transpose()<<endl;
+   //cout<<"R 6 wrt 5: "<<endl;
+   //cout<<affine_frame6_wrt_5.linear()<<endl;
+           
+   xvec6_wrt_5 = affine_frame6_wrt_5.linear().col(0);
+   double theta6 = atan2(xvec6_wrt_5(1),xvec6_wrt_5(0));
+   //ROS_INFO("theta6 = %f",theta6); 
+   theta_vec(5) = theta6;   
+   fk_gripper_frame = fwd_kin_solve_DH(theta_vec, d_vec);  
+   //cout<<"FK gripper frame: ";
+   //cout<<"origin: "<<fk_gripper_frame.translation().transpose()<<endl;
+   //cout<<"R:"<<endl;
+   //cout<<fk_gripper_frame.linear()<<endl;
+   
+   // pack the solution in to a single vector
+   q_vec_soln_ =  convert_DH_vecs_to_qvec(theta_vec, d_vec);
+           
+   //cout<<"soln: "<<q_vec_soln_.transpose()<<endl;
+   //cout<<"origin: ";
+   //cout<<affine_frame_wrt_base.translation().transpose()<<endl;  
+   //ROS_INFO("x-axis from above is reference for theta4");
+   //double sval = 
+    
+    return 0; // dummy
 }
 
 

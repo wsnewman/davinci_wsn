@@ -19,13 +19,14 @@ int main(int argc, char **argv) {
     sensor_msgs::JointState jointState; //create an object of type "jointState", 
     Eigen::VectorXd amp_vec;
     amp_vec.resize(7);
-    //amp_vec<<1,0.5,0.0,1,1,1,1;
+    amp_vec<<0.7,0.7,0.1,3.0,1.4,1.4,0;
     //amp_vec<<0.2,0.5,0.0,0.5,0.5,0.5,0;
     //amp_vec<<0,0,0,0.5,0.2,0,0;
-    amp_vec<<0,0,0,0,0,0,0;    
+    //amp_vec<<0,0,0,0,0,0,0;    
     Eigen::VectorXd omega_vec;
         omega_vec.resize(7);
-    omega_vec<<1,1,1,1,1,0.5,1;
+    omega_vec<<1,1.2,1.4,1.6,1.8,2.1,0;
+    omega_vec*=0.1;
     Eigen::VectorXd q_vec;
     q_vec.resize(7);
     q_vec<<0,0,0,0,0,0,0;
@@ -73,18 +74,18 @@ int main(int argc, char **argv) {
             q_vec[i] = amp_vec[i]*sin(phase_vec[i]);
         }
         q_vec[6] += amp_vec[6]; // force only positive values for gripper opening
-
+        q_vec[2]+= 0.15; // add offset for displacement
         //joint 1: 
         // DEBUG:
-        /* */
+        /* 
         q_vec[0] = 0.4;
         q_vec[1]= 0.3; //0.5; //0.4;
-        q_vec[2] = insertion_offset+0.6; //0.2;
-        q_vec[3] = 0.0;//-1.3;  //0.3;
-        q_vec[4] = 0.0; //1.57; //0.5; // wrist bend
-        q_vec[5] = 0.0; //1.0; //1.57; // gripper-jaw rotation
+        q_vec[2] = insertion_offset+0.2; //rough guess...0.2 is max displacement; 
+        q_vec[3] = 0.345;//-1.3;  //0.3;
+        q_vec[4] = 0.678; //1.57; //0.5; // wrist bend
+        q_vec[5] = 1.0; //1.234; //1.0; //1.57; // gripper-jaw rotation
         q_vec[6] = 0.0;
-      
+      */
         jointState.position[0] = q_vec[0];
 
         //joint2:

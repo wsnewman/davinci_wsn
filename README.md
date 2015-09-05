@@ -7,7 +7,7 @@ Startup rviz with:
 Make model move with:
 `rosrun wsn_move_davinci_rviz davinci_joint_state_publisher`
 
-Display frames with: 
-`rosrun wsn_move_davinci_rviz davinci_ik `
+Perform IK demo/debugging with: 
+`rosrun davinci_kinematics test_davinci_ik`
 
 
