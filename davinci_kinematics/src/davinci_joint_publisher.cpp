@@ -35,6 +35,23 @@ DavinciJointPublisher::DavinciJointPublisher(ros::NodeHandle* nodehandle):nh_(*n
     for (int i=0;i<13;i++)
         jointState_.position.push_back(0.0); // allocate memory and initialize joint values to 0
 
+        jointState2_.name.push_back("two_outer_yaw_joint");
+    jointState2_.name.push_back("two_outer_pitch_joint");
+    jointState2_.name.push_back("two_outer_pitch_joint_1");
+    jointState2_.name.push_back("two_outer_pitch_joint_2");
+    jointState2_.name.push_back("two_outer_pitch_joint_3");
+    jointState2_.name.push_back("two_outer_pitch_joint_4");
+    jointState2_.name.push_back("two_outer_pitch_joint_5");
+    jointState2_.name.push_back("two_outer_insertion_joint");    
+    jointState2_.name.push_back("two_outer_roll_joint");    
+    jointState2_.name.push_back("two_outer_wrist_pitch_joint");
+    jointState2_.name.push_back("two_outer_wrist_yaw_joint");
+    jointState2_.name.push_back("two_outer_wrist_open_angle_joint");
+    jointState2_.name.push_back("two_outer_wrist_open_angle_joint_mimic");    
+    
+    for (int i=0;i<13;i++)
+        jointState2_.position.push_back(0.0); // allocate memory and initialize joint values to 0
+
 }
 
 //member helper function to set up subscribers;
@@ -65,7 +82,9 @@ void DavinciJointPublisher::initializeServices()
 void DavinciJointPublisher::initializePublishers()
 {
     ROS_INFO("Initializing Publisher");
-    joint_state_publisher_ = nh_.advertise<sensor_msgs::JointState>("dvrk_psm/joint_states", 1); 
+    joint_state_publisher_ = nh_.advertise<sensor_msgs::JointState>("dvrk_psm/joint_states", 1);
+    joint_state_publisher2_ = nh_.advertise<sensor_msgs::JointState>("dvrk_psm/joint_states", 1); 
+    
     //add more publishers, as needed
     // note: COULD make minimal_publisher_ a public member function, if want to use it within "main()"
 }
@@ -77,6 +96,23 @@ void DavinciJointPublisher::pubJointStates(Vectorq7x1 q_vec) {
     for (int i=0;i<7;i++) q_vec_xd(i) = q_vec(i);
     pubJointStates(q_vec_xd);
     
+}
+
+//alt: accept either Vectorq7x1 or Eigen::Vector Xd as args
+void DavinciJointPublisher::pubJointStates(Vectorq7x1 q_vec1, Vectorq7x1 q_vec2) {
+    Eigen::VectorXd q_vec_xd1, q_vec_xd2;
+    q_vec_xd1.resize(7);
+    q_vec_xd2.resize(7);    
+    for (int i=0;i<7;i++) {
+        q_vec_xd1(i) = q_vec1(i);
+        q_vec_xd2(i) = q_vec2(i);  
+    }
+    pubJointStates(q_vec_xd1); //,q_vec_xd2);
+    //cout<<"qvec1: "<<q_vec_xd1.transpose()<<endl;
+    ros::spinOnce(); //really only need this if have a subscriber or service running
+    ros::Duration(0.002).sleep(); //loop timer    
+    pubJointStates2(q_vec_xd2);
+    //cout<<"qvec2: "<<q_vec_xd2.transpose()<<endl;    
 }
 
 void DavinciJointPublisher::pubJointStates(Eigen::VectorXd q_vec) {
@@ -116,6 +152,45 @@ void DavinciJointPublisher::pubJointStates(Eigen::VectorXd q_vec) {
         joint_state_publisher_.publish(jointState_); // publish the joint states
     
 }
+
+void DavinciJointPublisher::pubJointStates2(Eigen::VectorXd q_vec) {
+    
+       jointState2_.header.stamp = ros::Time::now();
+       jointState2_.position[0] = q_vec[0];
+
+        //joint2:
+        jointState2_.position[1] = q_vec[1]; // main joint for jnt2
+        //the following joints mimic jnt2, just for visualization
+          jointState2_.position[2] = q_vec[1];
+          jointState2_.position[3] = q_vec[1];
+          jointState2_.position[4] = -q_vec[1];
+          jointState2_.position[5] = -q_vec[1];
+          jointState2_.position[6] = q_vec[1];          
+        
+        //insertion:
+        jointState2_.position[7] = q_vec[2];
+       
+        //rotation about tool shaft:
+        jointState2_.position[8] = q_vec[3]; 
+
+        // wrist bend:
+        jointState2_.position[9] = q_vec[4]; 
+        
+        //jaws:
+        // q_vec[5] rotates both jaws together
+       
+        jointState2_.position[10] = q_vec[5]-0.5*q_vec[6];  
+        
+        // this rotates only 1 jaw; command only positive values,
+        // so controls gripper opening; q6=0 --> gripper closed
+        
+        jointState2_.position[11] = q_vec[6];         
+        
+        //ROS_INFO("ang1 = %f",ang1);
+        joint_state_publisher2_.publish(jointState2_); // publish the joint states
+    
+}
+
 
 // a simple callback function, used by the example subscriber.
 // note, though, use of member variables and access to minimal_publisher_ (which is a member method)

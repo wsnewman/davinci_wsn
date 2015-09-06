@@ -28,7 +28,10 @@ public:
     DavinciJointPublisher(ros::NodeHandle* nodehandle); //"main" will need to instantiate a ROS nodehandle, then pass it to the constructor
     // may choose to define public methods or public variables, if desired
     void pubJointStates(Eigen::VectorXd q_vec);
+    void pubJointStates(Vectorq7x1 q_vec1, Vectorq7x1 q_vec2);
+
     void pubJointStates(Vectorq7x1 q_vec);
+    void pubJointStates2(Eigen::VectorXd q_vec);
 
 private:
     // put private member data here;  "private" data will only be available to member functions of this class;
@@ -37,11 +40,11 @@ private:
     //ros::Subscriber minimal_subscriber_; //these will be set up within the class constructor, hiding these ugly details
     //ros::ServiceServer minimal_service_;
     ros::Publisher  joint_state_publisher_;
-    
+    ros::Publisher  joint_state_publisher2_;    
     //double val_from_subscriber_; //example member variable: better than using globals; convenient way to pass data from a subscriber to other member functions
     //double val_to_remember_; // member variables will retain their values even as callbacks come and go
      sensor_msgs::JointState jointState_; //create an object of type "jointState", 
-   
+     sensor_msgs::JointState jointState2_; // and for 2nd psm
     // member methods as well:
     //void initializeSubscribers(); // we will define some helper methods to encapsulate the gory details of initializing subscribers, publishers and services
     void initializePublishers();

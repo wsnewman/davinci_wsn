@@ -1,5 +1,5 @@
 <launch>
-  <arg name="model" default="$(find dvrk_model)/model/psm_one.urdf.xacro" />
+  <arg name="model" default="$(find dvrk_model)/model/both_psms.urdf.xacro" />
   <arg name="gui" default="true" />
   <arg name="rate" default="100" />
   <arg name="rviz" default="true"/>
