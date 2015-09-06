@@ -15,7 +15,7 @@ int main(int argc, char** argv)
 
     ros::NodeHandle nh; // create a node handle; need to pass this to the class constructor
 
-    DavinciJointPublisher davinciJointPublisher(&nh);  //instantiate an ExampleRosClass object and pass in pointer to nodehandle for constructor to use
+    DavinciJointPublisher davinciJointPublisher(&nh);  //instantiate a DavinciJointPublisher object and pass in pointer to nodehandle for constructor to use
  
     ROS_INFO("instantiating  forward solver and an ik_solver");
     Davinci_fwd_solver davinci_fwd_solver; //instantiate a forward-kinematics solver    
