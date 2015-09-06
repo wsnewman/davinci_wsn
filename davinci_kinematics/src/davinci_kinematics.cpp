@@ -5,10 +5,7 @@
 
 using namespace std;
 
-
-//tf::TransformListener *g_tfListener_ptr; //pointer to a global transform listener
-
-
+//some utilities to convert data types:
 Eigen::Affine3f  Davinci_fwd_solver::transformTFToEigen(const tf::Transform &t) {
     Eigen::Affine3f e;
     for (int i = 0; i < 3; i++) {
@@ -24,6 +21,7 @@ Eigen::Affine3f  Davinci_fwd_solver::transformTFToEigen(const tf::Transform &t) 
     return e;
 }
 
+// as above, but double instead of float
 Eigen::Affine3d Davinci_fwd_solver::transformTFToAffine3d(const tf::Transform &t){
     Eigen::Affine3d e;
     for (int i = 0; i < 3; i++) {
@@ -39,7 +37,7 @@ Eigen::Affine3d Davinci_fwd_solver::transformTFToAffine3d(const tf::Transform &t
     return e;
 }
 
-
+// versions for stamped transforms
 Eigen::Affine3d Davinci_fwd_solver::stampedTFToAffine3d(const tf::StampedTransform &t){
     tf::Vector3 tf_Origin = t.getOrigin();
     tf::Matrix3x3 tf_R = t.getBasis();
@@ -67,6 +65,7 @@ Eigen::Affine3f  Davinci_fwd_solver::stampedTFToEigen(const tf::StampedTransform
     return e;
 }
 
+//and go the other direction:
  geometry_msgs::Pose Davinci_fwd_solver::transformEigenAffine3fToPose(Eigen::Affine3f e) {
     Eigen::Vector3f Oe;
     Eigen::Matrix3f Re;
@@ -132,7 +131,7 @@ void Davinci_fwd_solver::convert_qvec_to_DH_vecs(const Vectorq7x1& q_vec) {
     ROS_INFO("using theta1, theta2, d3 = %f %f %f", thetas_DH_vec_(0),thetas_DH_vec_(1),dvals_DH_vec_(2));
 
 }
-    Eigen::VectorXd thetas_DH_vec_,dvals_DH_vec_;
+//    Eigen::VectorXd thetas_DH_vec_,dvals_DH_vec_;
 
 Vectorq7x1 Davinci_fwd_solver::convert_DH_vecs_to_qvec(const Eigen::VectorXd &thetas_DH_vec, 
         const Eigen::VectorXd &dvals_DH_vec) {
@@ -146,7 +145,8 @@ Vectorq7x1 Davinci_fwd_solver::convert_DH_vecs_to_qvec(const Eigen::VectorXd &th
     return q_vec;
 
 }
-     
+
+//given 4 DH parameters, compute the corresponding transform as an affine3d
 Eigen::Affine3d Davinci_fwd_solver::computeAffineOfDH(double a, double d, double alpha, double theta){
      Eigen::Affine3d affine_DH;
      Eigen::Matrix3d R;
@@ -175,6 +175,7 @@ Eigen::Affine3d Davinci_fwd_solver::computeAffineOfDH(double a, double d, double
      return affine_DH;
 }
 
+// use member fncs to compute and multiply successive transforms
 Davinci_fwd_solver::Davinci_fwd_solver() { 
     //affine describing frame0 w/rt base frame--see comments above
    Eigen::Matrix3d R_0_wrt_base;
@@ -195,21 +196,6 @@ Davinci_fwd_solver::Davinci_fwd_solver() {
    affine_frame0_wrt_base_.translation() = Origin_0_wrt_base;      
 
    // fill in a static tool transform from frame6 to a frame of interest on the gripper
-   //Eigen::Affine3d affine_gripper_wrt_frame6_;
-   /*
-   Eigen::Matrix3d R_gripper_wrt_frame6;
-   Eigen::Vector3d Origin_gripper_wrt_frame6;
-   Origin_gripper_wrt_frame6<<0,0,gripper_jaw_length;
-   z_axis<<0,0,1; 
-   x_axis<<1,0,0;  
-   y_axis<<0,1,0; 
-   R_gripper_wrt_frame6.col(0) = x_axis;
-   R_gripper_wrt_frame6.col(1) = y_axis;
-   R_gripper_wrt_frame6.col(2) = z_axis;     
-   affine_gripper_wrt_frame6_.linear() = R_gripper_wrt_frame6;
-   affine_gripper_wrt_frame6_.translation() = Origin_gripper_wrt_frame6;   
-   */
-   //short version of above:
    affine_gripper_wrt_frame6_ = computeAffineOfDH(0, gripper_jaw_length, 0,-M_PI/2);
    
    theta_DH_offsets_.resize(7);
@@ -221,7 +207,6 @@ Davinci_fwd_solver::Davinci_fwd_solver() {
    dval_DH_offsets_.resize(7);
    dval_DH_offsets_<<0,0,DH_q_offsets[2],0,0,0,0;
    
-
 }
 
 //provide DH theta and d values, return affine pose of gripper tip w/rt base frame
@@ -264,6 +249,7 @@ Eigen::Affine3d Davinci_fwd_solver::fwd_kin_solve_DH(const Eigen::VectorXd& thet
 
 
 // fwd-kin fnc: computes gripper frame w/rt base frame given q_vec
+// converts q_Vec to DH params, then uses above fnc for fwd kin
 Eigen::Affine3d Davinci_fwd_solver::fwd_kin_solve(const Vectorq7x1& q_vec) {   
     //convert q_vec to DH coordinates:
     //ROS_INFO("converting q to DH vals");
@@ -290,6 +276,9 @@ void Davinci_IK_solver::get_solns(std::vector<Vectorq7x1> &q_solns) {
     q_solns = q_solns_fit_; //q7dof_solns;
 }
 
+//ik_solve uses helper funcs below:
+// compute_w_from_tip finds the wrist point (at wrist bend), given desired gripper frame;
+// q123_from_wrist solves for first three joint displacements, given wrist point
 
 //given a 3-D wrist point w/rt base frame (at portal origin), solve for theta1, theta2 and d3;
 // return these in a vector (in that order)
@@ -389,6 +378,9 @@ bool Davinci_IK_solver::fit_joints_to_range(Vectorq7x1 &qvec) {
         return false;
 }
 
+//uses above; first 3 joint displacements are unique within joint limits;
+// it appears legal IK solns are unique--needs further consideration
+// need to implement and apply joint-limit checking
 int Davinci_IK_solver::ik_solve(Eigen::Affine3d const& desired_hand_pose) // solve IK
 { 
    Eigen::Vector3d z_vec4,z4_wrt_3,O_6_wrt_4,xvec6_wrt_5;

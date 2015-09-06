@@ -19,12 +19,13 @@ int main(int argc, char** argv)
 
     // define a vector of desired joint displacements...w/o linkage redundancies
     Eigen::VectorXd q_vec;
+    q_vec.resize(7);
     q_vec<<0.1,0.2,0.15,0.4,0.5,0.6,0.7;
     
     //use the publisher object to map these correctly and send them to rviz
 
     
-    for (int i=0;i<10;i++) {
+    for (int i=0;i<100;i++) {
      davinciJointPublisher.pubJointStates(q_vec); //publish a bunch of times, to make sure
         ros::spinOnce();   
         ros::Duration(0.1).sleep(); 

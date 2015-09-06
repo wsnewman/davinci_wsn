@@ -18,7 +18,7 @@
 //message types used in this example code;  include more message types, as needed
 #include <std_msgs/Bool.h> 
 #include <std_msgs/Float32.h>
-
+#include <davinci_kinematics/davinci_kinematics.h>
 //#include <example_srv/simple_bool_service_message.h> // this is a pre-defined service message, contained in shared "example_srv" package
 
 // define a class, including a constructor, member variables and member functions
@@ -28,7 +28,8 @@ public:
     DavinciJointPublisher(ros::NodeHandle* nodehandle); //"main" will need to instantiate a ROS nodehandle, then pass it to the constructor
     // may choose to define public methods or public variables, if desired
     void pubJointStates(Eigen::VectorXd q_vec);
-    
+    void pubJointStates(Vectorq7x1 q_vec);
+
 private:
     // put private member data here;  "private" data will only be available to member functions of this class;
     ros::NodeHandle nh_; // we will need this, to pass between "main" and constructor

@@ -70,6 +70,15 @@ void DavinciJointPublisher::initializePublishers()
     // note: COULD make minimal_publisher_ a public member function, if want to use it within "main()"
 }
 
+//alt: accept either Vectorq7x1 or Eigen::Vector Xd as args
+void DavinciJointPublisher::pubJointStates(Vectorq7x1 q_vec) {
+    Eigen::VectorXd q_vec_xd;
+    q_vec_xd.resize(7);
+    for (int i=0;i<7;i++) q_vec_xd(i) = q_vec(i);
+    pubJointStates(q_vec_xd);
+    
+}
+
 void DavinciJointPublisher::pubJointStates(Eigen::VectorXd q_vec) {
     
             jointState_.header.stamp = ros::Time::now();
