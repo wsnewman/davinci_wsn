@@ -33,9 +33,11 @@ int main(int argc, char** argv) {
     //q_in << 0, 0, 0, 0, 0, 0, 0;  
 
     Eigen::VectorXd q_in_vecxd;
-    Vectorq7x1 qvec_1,qvec_2;
-    qvec_1<< 0,0,0,0,0,0,0;
-    qvec_2<< -0.5, 0.4,  0.1,    0.6,    -0.7,   0.8,  0;       
+    Eigen::VectorXd qvec_1,qvec_2;
+    qvec_1.resize(14);
+    qvec_2.resize(14);
+    qvec_1<< 0,0,0,0,0,0,0,   0,0,0,0,0,0,0;
+    qvec_2<< -0.5, 0.4,  0.1,    0.6,    -0.7,   0.8,  0,      -0.5, 0.4,  0.1,    0.6,    -0.7,   0.8,  0;       
   
       // std::vector<Eigen::VectorXd> des_path;
         // cout<<"creating des_path vector; enter 1:";
@@ -55,7 +57,7 @@ int main(int argc, char** argv) {
            trajectory_point2.positions.clear();
        trajectory_point1.time_from_start =    ros::Duration(0.0);
        trajectory_point2.time_from_start =    ros::Duration(1.0);
-    for (int i=0;i<7;i++) { //pre-sizes positions vector, so can access w/ indices later
+    for (int i=0;i<14;i++) { //pre-sizes positions vector, so can access w/ indices later
         trajectory_point1.positions.push_back(qvec_1(i));
         trajectory_point2.positions.push_back(qvec_2(i));
     } 

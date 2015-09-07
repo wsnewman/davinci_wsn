@@ -50,9 +50,37 @@ DavinciJointPublisher::DavinciJointPublisher(ros::NodeHandle &nh):nh_(nh)
     jointState2_.name.push_back("two_outer_wrist_yaw_joint");
     jointState2_.name.push_back("two_outer_wrist_open_angle_joint");
     jointState2_.name.push_back("two_outer_wrist_open_angle_joint_mimic");    
+
+    jointStatesBoth_.name.push_back("one_outer_yaw_joint");
+    jointStatesBoth_.name.push_back("one_outer_pitch_joint");
+    jointStatesBoth_.name.push_back("one_outer_pitch_joint_1");
+    jointStatesBoth_.name.push_back("one_outer_pitch_joint_2");
+    jointStatesBoth_.name.push_back("one_outer_pitch_joint_3");
+    jointStatesBoth_.name.push_back("one_outer_pitch_joint_4");
+    jointStatesBoth_.name.push_back("one_outer_pitch_joint_5");
+    jointStatesBoth_.name.push_back("one_outer_insertion_joint");    
+    jointStatesBoth_.name.push_back("one_outer_roll_joint");    
+    jointStatesBoth_.name.push_back("one_outer_wrist_pitch_joint");
+    jointStatesBoth_.name.push_back("one_outer_wrist_yaw_joint");
+    jointStatesBoth_.name.push_back("one_outer_wrist_open_angle_joint");
+    jointStatesBoth_.name.push_back("one_outer_wrist_open_angle_joint_mimic");    
     
-    for (int i=0;i<13;i++)
-        jointState2_.position.push_back(0.0); // allocate memory and initialize joint values to 0
+    jointStatesBoth_.name.push_back("two_outer_yaw_joint");
+    jointStatesBoth_.name.push_back("two_outer_pitch_joint");
+    jointStatesBoth_.name.push_back("two_outer_pitch_joint_1");
+    jointStatesBoth_.name.push_back("two_outer_pitch_joint_2");
+    jointStatesBoth_.name.push_back("two_outer_pitch_joint_3");
+    jointStatesBoth_.name.push_back("two_outer_pitch_joint_4");
+    jointStatesBoth_.name.push_back("two_outer_pitch_joint_5");
+    jointStatesBoth_.name.push_back("two_outer_insertion_joint");    
+    jointStatesBoth_.name.push_back("two_outer_roll_joint");    
+    jointStatesBoth_.name.push_back("two_outer_wrist_pitch_joint");
+    jointStatesBoth_.name.push_back("two_outer_wrist_yaw_joint");
+    jointStatesBoth_.name.push_back("two_outer_wrist_open_angle_joint");
+    jointStatesBoth_.name.push_back("two_outer_wrist_open_angle_joint_mimic");  
+   
+    for (int i=0;i<26;i++)
+        jointStatesBoth_.position.push_back(0.0); // allocate memory and initialize joint values to 0
 
 }
 
@@ -85,6 +113,7 @@ void DavinciJointPublisher::initializePublishers()
 {
     ROS_INFO("Initializing Publisher");
     joint_state_publisher_ = nh_.advertise<sensor_msgs::JointState>("dvrk_psm/joint_states", 1);
+    //can re-use the above publisher for right, left or both
     joint_state_publisher2_ = nh_.advertise<sensor_msgs::JointState>("dvrk_psm/joint_states", 1); 
     
     //add more publishers, as needed
@@ -148,8 +177,10 @@ void DavinciJointPublisher::pubJointStates(Eigen::VectorXd q_vec) {
         // this rotates only 1 jaw; command only positive values,
         // so controls gripper opening; q6=0 --> gripper closed
         
-        jointState_.position[11] = q_vec[6];         
+        jointState_.position[11] = q_vec[6]; 
+        jointState_.position[12] = -q_vec[6]; //a mimic joint of outer_wrist_open_angle_joint       
         
+        //two_outer_wrist_open_angle_joint_mimic: position[12]; need to look up what this does
         //ROS_INFO("ang1 = %f",ang1);
         joint_state_publisher_.publish(jointState_); // publish the joint states
     
@@ -193,6 +224,141 @@ void DavinciJointPublisher::pubJointStates2(Eigen::VectorXd q_vec) {
     
 }
 
+//given desired angles (7dof) for both left and right arms, combine these and publish
+void DavinciJointPublisher::pubJointStatesAll(Eigen::VectorXd q_vec1, Eigen::VectorXd q_vec2) {
+    
+       jointStatesBoth_.header.stamp = ros::Time::now();
+       jointStatesBoth_.position[0] = q_vec1[0];
+
+        //joint2:
+        jointStatesBoth_.position[1] = q_vec1[1]; // main joint for jnt2
+        //the following joints mimic jnt2, just for visualization
+          jointStatesBoth_.position[2] = q_vec1[1];
+          jointStatesBoth_.position[3] = q_vec1[1];
+          jointStatesBoth_.position[4] = -q_vec1[1];
+          jointStatesBoth_.position[5] = -q_vec1[1];
+          jointStatesBoth_.position[6] = q_vec1[1];          
+        
+        //insertion:
+        jointStatesBoth_.position[7] = q_vec1[2];
+       
+        //rotation about tool shaft:
+        jointStatesBoth_.position[8] = q_vec1[3]; 
+
+        // wrist bend:
+        jointStatesBoth_.position[9] = q_vec1[4]; 
+        
+        //jaws:
+        // q_vec[5] rotates both jaws together
+       
+        jointStatesBoth_.position[10] = q_vec1[5]-0.5*q_vec1[6];  
+        
+        // this rotates only 1 jaw; command only positive values,
+        // so controls gripper opening; q6=0 --> gripper closed
+        
+        jointStatesBoth_.position[11] = q_vec1[6];  
+        
+        // repeat for other arm, appending these values:
+       jointStatesBoth_.position[0+13] = q_vec2[0];
+        jointStatesBoth_.position[1+13] = q_vec2[1]; // main joint for jnt2
+        //the following joints mimic jnt2, just for visualization
+          jointStatesBoth_.position[2+13] = q_vec2[1];
+          jointStatesBoth_.position[3+13] = q_vec2[1];
+          jointStatesBoth_.position[4+13] = -q_vec2[1];
+          jointStatesBoth_.position[5+13] = -q_vec2[1];
+          jointStatesBoth_.position[6+13] = q_vec2[1];          
+        
+        //insertion:
+        jointStatesBoth_.position[13+7] = q_vec2[2];
+       
+        //rotation about tool shaft:
+        jointStatesBoth_.position[8+13] = q_vec2[3]; 
+
+        // wrist bend:
+        jointStatesBoth_.position[9+13] = q_vec2[4]; 
+        
+        //jaws:
+        // q_vec[5] rotates both jaws together
+       
+        jointStatesBoth_.position[10+13] = q_vec2[5]-0.5*q_vec2[6];  
+        
+        // this rotates only 1 jaw; command only positive values,
+        // so controls gripper opening; q6=0 --> gripper closed
+        
+        jointStatesBoth_.position[11+13] = q_vec2[6];         
+        
+        //ROS_INFO("ang1 = %f",ang1);
+        joint_state_publisher_.publish(jointStatesBoth_); // publish the joint states               
+               
+    }
+
+    void DavinciJointPublisher::pubJointStatesAll(Eigen::VectorXd qVecAll) {
+       jointStatesBoth_.header.stamp = ros::Time::now();
+       
+       jointStatesBoth_.position[0] = qVecAll[0];
+
+        //joint2:
+        jointStatesBoth_.position[1] = qVecAll[1]; // main joint for jnt2
+        //the following joints mimic jnt2, just for visualization
+          jointStatesBoth_.position[2] = qVecAll[1];
+          jointStatesBoth_.position[3] = qVecAll[1];
+          jointStatesBoth_.position[4] = -qVecAll[1];
+          jointStatesBoth_.position[5] = -qVecAll[1];
+          jointStatesBoth_.position[6] = qVecAll[1];          
+        
+        //insertion:
+        jointStatesBoth_.position[7] = qVecAll[2];
+       
+        //rotation about tool shaft:
+        jointStatesBoth_.position[8] = qVecAll[3]; 
+
+        // wrist bend:
+        jointStatesBoth_.position[9] = qVecAll[4]; 
+        
+        //jaws:
+        // q_vec[5] rotates both jaws together
+       
+        jointStatesBoth_.position[10] = qVecAll[5]-0.5*qVecAll[6];  
+        
+        // this rotates only 1 jaw; command only positive values,
+        // so controls gripper opening; q6=0 --> gripper closed
+        
+        jointStatesBoth_.position[11] = qVecAll[6];  
+        jointState_.position[12] = -qVecAll[6]; //a mimic joint of outer_wrist_open_angle_joint       
+
+        // repeat for other arm, appending these values:
+       jointStatesBoth_.position[0+13] = qVecAll[0+7];
+        jointStatesBoth_.position[1+13] = qVecAll[1+7]; // main joint for jnt2
+        //the following joints mimic jnt2, just for visualization
+          jointStatesBoth_.position[2+13] = qVecAll[1+7];
+          jointStatesBoth_.position[3+13] = qVecAll[1+7];
+          jointStatesBoth_.position[4+13] = -qVecAll[1+7];
+          jointStatesBoth_.position[5+13] = -qVecAll[1+7];
+          jointStatesBoth_.position[6+13] = qVecAll[1+7];          
+        
+        //insertion:
+        jointStatesBoth_.position[7+13] = qVecAll[2+7];
+       
+        //rotation about tool shaft:
+        jointStatesBoth_.position[8+13] = qVecAll[3+7]; 
+
+        // wrist bend:
+        jointStatesBoth_.position[9+13] = qVecAll[4+7]; 
+        
+        //jaws:
+        // q_vec[5] rotates both jaws together
+       
+        jointStatesBoth_.position[10+13] = qVecAll[5+7]-0.5*qVecAll[6+7];  
+        
+        // this rotates only 1 jaw; command only positive values,
+        // so controls gripper opening; q6=0 --> gripper closed
+        
+        jointStatesBoth_.position[11+13] = qVecAll[6+7];         
+        jointState_.position[12+13] = -qVecAll[6+7]; //a mimic joint of outer_wrist_open_angle_joint       
+        
+        //ROS_INFO("ang1 = %f",ang1);
+        joint_state_publisher_.publish(jointStatesBoth_); // publish the joint states           
+    }
 
 // a simple callback function, used by the example subscriber.
 // note, though, use of member variables and access to minimal_publisher_ (which is a member method)

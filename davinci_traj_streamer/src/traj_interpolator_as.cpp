@@ -10,6 +10,7 @@
 // Automated header generation creates multiple headers for message I/O
 // These are referred to by the root name (traj) and appended name (Action)
 #include<davinci_traj_streamer/trajAction.h>
+#include <trajectory_msgs/JointTrajectoryPoint.h>
 
 using namespace std;
 
@@ -34,6 +35,7 @@ bool trajInterpStatusSvc(cwru_srv::simple_bool_service_messageRequest& request, 
 
 bool update_trajectory(double traj_clock, trajectory_msgs::JointTrajectory trajectory, Vectorq7x1 qvec_prev, int &isegment, Vectorq7x1 &qvec_new) {
     trajectory_msgs::JointTrajectoryPoint trajectory_point_from, trajectory_point_to;
+    int njnts = qvec_prev.size();
     Vectorq7x1 qvec, qvec_to, delta_qvec, dqvec;
     int nsegs = trajectory.points.size() - 1;
     double t_subgoal;
@@ -112,6 +114,8 @@ public:
     }
     // Action Interface
     void executeCB(const actionlib::SimpleActionServer<davinci_traj_streamer::trajAction>::GoalConstPtr& goal);
+    bool update_trajectory(double traj_clock, trajectory_msgs::JointTrajectory trajectory, Eigen::VectorXd qvec_prev, 
+        int &isegment, Eigen::VectorXd &qvec_new);
 };
 
 //implementation of the constructor:
@@ -192,7 +196,8 @@ void TrajActionServer::executeCB(const actionlib::SimpleActionServer<davinci_tra
     int isegment;
     trajectory_msgs::JointTrajectoryPoint trajectory_point0;
 
-    Vectorq7x1 qvec, qvec0, qvec_prev, qvec_new;
+    //Vectorq7x1 qvec, qvec0, qvec_prev, qvec_new;
+    Eigen::VectorXd qvec, qvec0, qvec_prev, qvec_new;
     // TEST TEST TEST
     //Eigen::VectorXd q_vec;
     //q_vec<<0.1,0.2,0.15,0.4,0.5,0.6,0.7;    
@@ -215,7 +220,7 @@ void TrajActionServer::executeCB(const actionlib::SimpleActionServer<davinci_tra
     result_.traj_id = goal->traj_id;
     cout<<"received trajectory w/ "<<goal->trajectory.points.size()<<" points"<<endl;
     // copy trajectory to global var:
-    new_trajectory = goal->trajectory; // does this work?
+    new_trajectory = goal->trajectory; // 
     // insist that a traj have at least 2 pts
     int npts = new_trajectory.points.size();
     if (npts  < 2) {
@@ -232,10 +237,15 @@ void TrajActionServer::executeCB(const actionlib::SimpleActionServer<davinci_tra
         //cout<<new_trajectory.points[0].positions.size()<<" =  new_trajectory.points[0].positions.size()"<<endl;
         //cout<<"size of positions[]: "<<trajectory_point0.positions.size()<<endl;
         cout << "subgoals: " << endl;
+        int njnts; 
         for (int i = 0; i < npts; i++) {
-            for (int j = 0; j < 7; j++) { //copy from traj point to 7x1 vector
+            njnts = new_trajectory.points[i].positions.size();
+            cout<<"njnts: "<<njnts<<endl;
+            for (int j = 0; j < njnts; j++) { //copy from traj point to 7x1 vector
                 cout << new_trajectory.points[i].positions[j] << ", ";
             }
+            cout<<endl;
+            cout<<"time from start: "<<new_trajectory.points[i].time_from_start.toSec()<<endl;
             cout << endl;
         }
 
@@ -246,20 +256,28 @@ void TrajActionServer::executeCB(const actionlib::SimpleActionServer<davinci_tra
         traj_clock = 0.0; // initialize clock for trajectory;
         isegment = 0;
         trajectory_point0 = new_trajectory.points[0];
-        for (int i = 0; i < 7; i++) { //copy from traj point to 7x1 vector
-            qvec0[i] = trajectory_point0.positions[i];
+        njnts = new_trajectory.points[0].positions.size();
+        int njnts_new;
+        qvec_prev.resize(njnts);
+        qvec_new.resize(njnts);
+        ROS_INFO("populating qvec_prev: ");
+        for (int i = 0; i < njnts; i++) { //copy from traj point to Eigen type vector
+            qvec_prev[i] = trajectory_point0.positions[i];
         }
         //cmd_pose_right(qvec0); //populate and send out first command  
         //qvec_prev = qvec0;
-        cout << "start pt: " << qvec0.transpose() << endl;
+        cout << "start pt: " << qvec_prev.transpose() << endl;
     }
     while (working_on_trajectory) {
         traj_clock += dt_traj;
         // update isegment and qvec according to traj_clock; 
-        //if traj_clock>= final_time, use exact end coords and set "working_on_trajectory" to false          
+        //if traj_clock>= final_time, use exact end coords and set "working_on_trajectory" to false 
+        ROS_INFO("traj_clock = %f; updating qvec_new",traj_clock);
         working_on_trajectory = update_trajectory(traj_clock, new_trajectory, qvec_prev, isegment, qvec_new);
         //cmd_pose_right(qvec_new); // use qvec to populate object and send it to robot
-        davinciJointPublisher.pubJointStates(qvec_new);
+        ROS_INFO("publishing qvec_new as command");
+        davinciJointPublisher.pubJointStatesAll(qvec_new);
+;
         qvec_prev = qvec_new;
 
 
@@ -277,6 +295,69 @@ void TrajActionServer::executeCB(const actionlib::SimpleActionServer<davinci_tra
     }
     ROS_INFO("completed execution of a trajectory" );
     as_.setSucceeded(result_); // tell the client that we were successful acting on the request, and return the "result" message 
+}
+
+// more general version--arbitrary number of joints
+bool TrajActionServer::update_trajectory(double traj_clock, trajectory_msgs::JointTrajectory trajectory, Eigen::VectorXd qvec_prev, 
+        int &isegment, Eigen::VectorXd &qvec_new) {
+    
+    trajectory_msgs::JointTrajectoryPoint trajectory_point_from, trajectory_point_to;
+    int njnts = qvec_prev.size();
+    cout<<"njnts for qvec_prev: "<<njnts<<endl;
+    Eigen::VectorXd qvec, qvec_to, delta_qvec, dqvec;
+    int nsegs = trajectory.points.size() - 1;
+    ROS_INFO("update_trajectory: nsegs = %d, isegment = %d",nsegs,isegment);
+    double t_subgoal;
+    //cout<<"traj_clock = "<<traj_clock<<endl;
+    if (isegment < nsegs) {
+        trajectory_point_to = trajectory.points[isegment + 1];
+        t_subgoal = trajectory_point_to.time_from_start.toSec();
+        cout<<"iseg = "<<isegment<<"; t_subgoal = "<<t_subgoal<<endl;
+    } else {
+        cout << "reached end of last segment" << endl;
+        trajectory_point_to = trajectory.points[nsegs];
+        t_subgoal = trajectory_point_to.time_from_start.toSec();
+        
+        for (int i = 0; i < njnts; i++) {
+            qvec_new[i] = trajectory_point_to.positions[i];
+        }
+        cout << "final time: " << t_subgoal << endl;
+        return false;
+    }
+
+    cout<<"iseg = "<<isegment<<"; t_subgoal = "<<t_subgoal<<endl;
+    while ((t_subgoal < traj_clock)&&(isegment < nsegs)) {
+        cout<<"loop: iseg = "<<isegment<<"; t_subgoal = "<<t_subgoal<<endl;
+        isegment++;
+        if (isegment > nsegs - 1) {
+            //last point
+            trajectory_point_to = trajectory.points[nsegs];
+            cout<<"next traj pt #jnts = "<<trajectory_point_to.positions.size()<<endl;
+            for (int i = 0; i < njnts; i++) {
+                qvec_new[i] = trajectory_point_to.positions[i];
+            }
+            cout << "iseg>nsegs" << endl;
+            return false;
+        }
+
+        trajectory_point_to = trajectory.points[isegment + 1];
+        t_subgoal = trajectory_point_to.time_from_start.toSec();
+    }
+    //cout<<"t_subgoal = "<<t_subgoal<<endl;
+    //here if have a valid segment:
+    cout<<"njnts of trajectory_point_to: "<<trajectory_point_to.positions.size()<<endl;
+    qvec_to.resize(njnts);
+    for (int i = 0; i < njnts; i++) {
+        qvec_to[i] = trajectory_point_to.positions[i];
+    }
+    delta_qvec.resize(njnts);
+    delta_qvec = qvec_to - qvec_prev; //this far to go until next node;
+    double delta_time = t_subgoal - traj_clock;
+    if (delta_time < dt_traj) delta_time = dt_traj;
+    dqvec.resize(njnts);
+    dqvec = delta_qvec * dt_traj / delta_time;
+    qvec_new = qvec_prev + dqvec;
+    return true;
 }
 
 int main(int argc, char** argv) {

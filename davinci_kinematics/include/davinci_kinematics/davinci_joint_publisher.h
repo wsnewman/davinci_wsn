@@ -35,6 +35,8 @@ public:
     void pubJointStates(Vectorq7x1 q_vec);
     void pubJointStates2(Eigen::VectorXd q_vec);
 
+    void pubJointStatesAll(Eigen::VectorXd q_vec1, Eigen::VectorXd q_vec2);
+    void pubJointStatesAll(Eigen::VectorXd qVecAll);
 private:
     // put private member data here;  "private" data will only be available to member functions of this class;
     ros::NodeHandle nh_; // we will need this, to pass between "main" and constructor
@@ -47,6 +49,7 @@ private:
     //double val_to_remember_; // member variables will retain their values even as callbacks come and go
      sensor_msgs::JointState jointState_; //create an object of type "jointState", 
      sensor_msgs::JointState jointState2_; // and for 2nd psm
+     sensor_msgs::JointState jointStatesBoth_; // both, combined   
     // member methods as well:
     //void initializeSubscribers(); // we will define some helper methods to encapsulate the gory details of initializing subscribers, publishers and services
     void initializePublishers();
