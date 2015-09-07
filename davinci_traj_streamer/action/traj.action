@@ -1,0 +1,13 @@
+#goal definition
+#the lines with the hash signs are merely comments
+#goal, result and feedback are defined by this fixed order, and separated by 3 hyphens
+trajectory_msgs/JointTrajectory trajectory
+int32 traj_id
+---
+#result definition
+#return_val = 1 for traj complete; traj_id should echo the input traj_id
+int32 return_val
+int32 traj_id
+---
+#feedback: optional; could declare step number of trajectory in progress
+int32 fdbk

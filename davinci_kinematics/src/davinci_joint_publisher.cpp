@@ -11,9 +11,11 @@
 //CONSTRUCTOR:  this will get called whenever an instance of this class is created
 // want to put all dirty work of initializations here
 // odd syntax: have to pass nodehandle pointer into constructor for constructor to build subscribers, etc
-DavinciJointPublisher::DavinciJointPublisher(ros::NodeHandle* nodehandle):nh_(*nodehandle)
+//DavinciJointPublisher::DavinciJointPublisher(ros::NodeHandle* nodehandle):nh_(*nodehandle)
+//DavinciJointPublisher(ros::NodeHandle *nh);
+DavinciJointPublisher::DavinciJointPublisher(ros::NodeHandle &nh):nh_(nh)
 { // constructor
-    //ROS_INFO("in class constructor of DavinciJointPublisher");
+    ROS_INFO("in class constructor of DavinciJointPublisher");
     //initializeSubscribers(); // package up the messy work of creating subscribers; do this overhead in constructor
     initializePublishers();
     //initializeServices();

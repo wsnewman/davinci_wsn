@@ -25,7 +25,9 @@
 class DavinciJointPublisher
 {
 public:
-    DavinciJointPublisher(ros::NodeHandle* nodehandle); //"main" will need to instantiate a ROS nodehandle, then pass it to the constructor
+    //DavinciJointPublisher(ros::NodeHandle* nodehandle); //"main" will need to instantiate a ROS nodehandle, then pass it to the constructor
+    DavinciJointPublisher(ros::NodeHandle &nh); //"main" will need to instantiate a ROS nodehandle, then pass it to the constructor
+
     // may choose to define public methods or public variables, if desired
     void pubJointStates(Eigen::VectorXd q_vec);
     void pubJointStates(Vectorq7x1 q_vec1, Vectorq7x1 q_vec2);

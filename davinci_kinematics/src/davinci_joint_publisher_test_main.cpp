@@ -15,7 +15,7 @@ int main(int argc, char** argv)
     ros::NodeHandle nh; // create a node handle; need to pass this to the class constructor
 
     //ROS_INFO("main: instantiating an object of type ExampleRosClass");
-    DavinciJointPublisher davinciJointPublisher(&nh);  //instantiate an ExampleRosClass object and pass in pointer to nodehandle for constructor to use
+    DavinciJointPublisher davinciJointPublisher(nh);  //instantiate an ExampleRosClass object and pass in pointer to nodehandle for constructor to use
 
     // define a vector of desired joint displacements...w/o linkage redundancies
     Eigen::VectorXd q_vec;
