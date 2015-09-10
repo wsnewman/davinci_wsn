@@ -1,0 +1,81 @@
+approach:
+  gazebo controller: 
+   
+
+davinci psm tree:
+  psm_base_link glued to "world"
+
+psm_base_link (outer_yaw_joint) -> outer_yaw_link
+  outer_yaw_link
+
+  outer_yaw_link-> (outer_pitch_joint) ->  outer_pitch_link
+  outer_yaw_link-> (outer_pitch_joint_1) -> outer_pitch_back_link
+
+    outer_pitch_back_link -> (outer_pitch_joint_3) -> outer_pitch_bottom_link
+      outer_pitch_bottom_link -> (outer_pitch_joint_5) -> outer_insertion_link
+        outer_insertion_link
+      outer_pitch_top_link
+    outer_pitch_front_link
+
+    outer_pitch_link -> (outer_insertion_joint prismatic) -> tool_main_link
+      tool_main_link -> (outer_roll_joint) -> tool_wrist_link
+        tool_wrist_link -> (outer_roll_shaft_joint fixed) -> tool_wrist_shaft_link
+
+-----these for gripper DOF's----
+          tool_wrist_shaft_link
+            tool_wrist_sca_link
+              tool_wrist_sca_shaft_link
+                 tool_tip_link
+                 tool_wrist_sca_ee_link_1
+                 tool_wrist_sca_ee_link_2
+
+try this:  
+
+yaw rotation: fine as-is
+pitch rotation: define an invisible joint for pitch?  
+                servo this joint angle
+                connecting components: yaw/pitch--> pose of 
+                   outer_pitch_top_link
+                   outer_pitch_bottom_link
+                   outer_pitch_insertion_link
+                   outer_pitch_front_link
+                   outer_pitch_back_link
+   mimics: 	outer_pitch_joint_1 mimics outer_pitch_joint (outer_yaw_link-> outer_pitch_back_link)
+		outer_pitch_joint_2 mimics outer_pitch_joint (outer_yaw_link-> outer_pitch_front_link)
+		outer_pitch_joint_3 mimics outer_pitch_joint w/ multiplier=-1
+							     (outer_pitch_back_link-> outer_pitch_bottom_link)
+		outer_pitch_joint_4 mimics outer_pitch_joint w/ multiplier=-1
+							     (outer_pitch_back_link->outer_pitch_top_link)
+		outer_pitch_joint_5 mimics outer_pitch_joint (outer_pitch_bottom_link->outer_insertion_link)
+
+minimal:
+	outer_yaw_joint: psm_base_link (outer_yaw_joint) -> outer_yaw_link
+	outer_pitch_joint:   outer_yaw_link-> (outer_pitch_joint) ->  outer_pitch_link
+
+        outer_pitch_joint_1: outer_yaw_link-> (outer_pitch_joint_1) -> outer_pitch_back_link
+	outer_pitch_joint_3: outer_pitch_back_link -> (outer_pitch_joint_3) -> outer_pitch_bottom_link
+        outer_pitch_joint_5: outer_pitch_bottom_link -> (outer_pitch_joint_5) -> outer_insertion_link
+
+
+psm_base_link ->(outer_yaw_joint) 
+          -> outer_yaw_link -> (outer_pitch_joint_1)
+             -> outer_pitch_back_link -> (outer_pitch_joint_3)
+                -> outer_pitch_bottom_link (outer_pitch_joint_5)
+                  -> outer_insertion_link 
+
+            AND: outer_pitch_link ->(outer_insertion_joint prismatic)-> tool_main_link
+                     (why not outer_insertion_link -> outer_insertion_joint -> tool_main_link ???
+
+psm_base_link (outer_yaw_joint) -> outer_yaw_link
+	outer_yaw_link-> (outer_pitch_joint) ->  outer_pitch_link
+ 		outer_pitch_link ->(outer_insertion_joint prismatic)-> tool_main_link
+			tool_main_link ->(outer_roll_joint)-> tool_wrist_link
+                           (then fixed link: tool_wrist_link-> (outer_roll_shaft_joint) -> tool_wrist_shaft_link)
+                            (useless?? has model)
+
+slave the pitch joints, for visualization:
+        
+          
+                   
+
+
