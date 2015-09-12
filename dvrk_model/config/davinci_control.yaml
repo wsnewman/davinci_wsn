@@ -1,0 +1,43 @@
+davinci:
+  # Publish all joint states -----------------------------------
+  joint_state_controller:
+    type: joint_state_controller/JointStateController
+    publish_rate: 50  
+  
+  # Position Controllers ---------------------------------------
+  joint1_position_controller:
+    type: effort_controllers/JointPositionController
+    joint: outer_yaw_joint
+    pid: {p: 100.0, i: 0.5, d: 10.0}
+  joint2_position_controller:
+    type: effort_controllers/JointPositionController
+    joint: outer_pitch_joint
+    pid: {p: 10.0, i: 0.1, d: 1.0}
+  joint2_1_position_controller:
+    type: effort_controllers/JointPositionController
+    joint: outer_pitch_joint_1
+    pid: {p: 100.0, i: 0.5, d: 10.0}
+  joint2_2_position_controller:
+    type: effort_controllers/JointPositionController
+    joint: outer_pitch_joint_2
+    pid: {p: 10.0, i: 0.1, d: 1.0}
+  joint2_3_position_controller:
+    type: effort_controllers/JointPositionController
+    joint: outer_pitch_joint_3
+    pid: {p: 100.0, i: 0.5, d: 10.0}
+  joint2_4_position_controller:
+    type: effort_controllers/JointPositionController
+    joint: outer_pitch_joint_4
+    pid: {p: 10.0, i: 0.1, d: 1.0}
+  joint2_5_position_controller:
+    type: effort_controllers/JointPositionController
+    joint: outer_pitch_joint_5
+    pid: {p: 10.0, i: 0.1, d: 1.0}
+  joint3_position_controller:
+    type: effort_controllers/JointPositionController
+    joint: outer_insertion_joint
+    pid: {p: 50.0, i: 0.1, d: 1.0}
+  joint4_position_controller:
+    type: effort_controllers/JointPositionController
+    joint: outer_roll_joint
+    pid: {p: 10.0, i: 0.1, d: 5.0}    

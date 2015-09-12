@@ -1,0 +1,12 @@
+roscore
+
+rosrun gazebo_ros gazebo
+
+roslaunch dvrk_model wsn_rosparam_gazebo_load.launch
+
+rosrun gazebo_ros spawn_model -file wsntest_psm_debug.base.urdf -urdf -model dvrk_psm
+
+roslaunch dvrk_model davinci_control_debug.launch
+
+test w/ (e.g.): rostopic pub /davinci/joint1_position_controller/command std_msgs/Float64 0
+
