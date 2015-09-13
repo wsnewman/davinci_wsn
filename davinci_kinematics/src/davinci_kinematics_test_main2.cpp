@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
   // the function "myCallback" will wake up whenever a new message is published to topic1 
   // the real work is done inside the callback function 
   
-  ros::Subscriber joint_state_subscriber= n.subscribe("dvrk_psm/joint_states",1,jsCallback);   
+  ros::Subscriber joint_state_subscriber= n.subscribe("davinci/joint_states",1,jsCallback);    
   
   // this is what we are testing: FK and IK solvers:
   Davinci_fwd_solver davinci_fwd_solver; //instantiate a forward-kinematics solver    
@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
     
     Eigen::Affine3d affine_wrist_wrt_base, affine_gripper_wrt_base, affine_frame_wrt_base;
         // wait to start receiving valid tf transforms 
-    /*
+    
     bool tferr = true;
     ROS_INFO("waiting for tf between one_psm_base_link and one_tool_tip_link...");
     while (tferr) {
@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
    cout<<affine_gripper_wrt_base.linear()<<endl;
    cout<<"origin: ";
    cout<<affine_gripper_wrt_base.translation().transpose()<<endl; 
-*/
+
    Eigen::Vector3d tip_from_FK, tip_from_FK_of_IK, tip_err;
    ROS_INFO("gripper tip frame from FK: ");   
    affine_gripper_wrt_base = davinci_fwd_solver.fwd_kin_solve(q_vec);

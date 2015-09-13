@@ -1,0 +1,20 @@
+<?xml version="1.0" ?>
+<robot name="dvrk_psm" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Macros -->
+  <xacro:include filename="$(find dvrk_model)/model/gazebo_psm.base.urdf.xacro"/>
+  <xacro:include filename="$(find dvrk_model)/model/gazebo_psm.tool.sca.urdf.xacro"/>
+  <!--xacro:include filename="$(find dvrk_model)/model/psm.tool.caudier.urdf.xacro"/-->
+
+  <!-- Macro for psm with sca -->
+  <xacro:macro name="psm_sca" params="prefix parent_link xyz rpy">
+    <xacro:psm
+        prefix="${prefix}"
+        parent_link="${parent_link}"
+        xyz="${xyz}" rpy="${rpy}"/>
+    <xacro:psm_tool_sca
+        prefix="${prefix}"/>
+  </xacro:macro>
+
+
+</robot>

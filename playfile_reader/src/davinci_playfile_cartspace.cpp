@@ -200,7 +200,7 @@ int main(int argc, char** argv) {
             z_vec2(i) = data[n][i + 16];
         }
         gripper_ang1 = data[n][9];
-        gripper_ang1 = data[n][19];
+        gripper_ang2 = data[n][19];
         arrival_time = data[n][20];
         
         x_vecs1.push_back(x_vec1);
@@ -260,13 +260,15 @@ int main(int argc, char** argv) {
     for (int ipose=0;ipose<nposes;ipose++) {   
         des_gripper_affine1 = gripper1_affines[ipose];
         ik_solver.ik_solve(des_gripper_affine1); //convert desired pose into equiv joint displacements
-        q_vec1 = ik_solver.get_soln();   
+        q_vec1 = ik_solver.get_soln(); 
+        q_vec1(6) = gripper_angs1[ipose];
         cout<<"qvec1: "<<q_vec1.transpose()<<endl;
         
         des_gripper_affine2 = gripper2_affines[ipose];
         ik_solver.ik_solve(des_gripper_affine2); //convert desired pose into equiv joint displacements
         q_vec2 = ik_solver.get_soln();  
-        
+        q_vec2(6) = gripper_angs2[ipose];
+        cout<<"qvec2: "<<q_vec2.transpose()<<endl;        
         //repackage q's into a trajectory;
         for (int i=0;i<7;i++) {
             trajectory_point.positions[i] = q_vec1(i);
@@ -294,7 +296,17 @@ int main(int argc, char** argv) {
     ROS_INFO("waiting for server: ");
     bool server_exists = action_client.waitForServer(ros::Duration(5.0)); // wait for up to 5 seconds
     // something odd in above: does not seem to wait for 5 seconds, but returns rapidly if server not running
-
+        int max_tries = 0;
+        while (!server_exists) {
+           server_exists = action_client.waitForServer(ros::Duration(5.0)); // wait for up to 5 seconds
+           // something odd in above: does not seem to wait for 5 seconds, but returns rapidly if server not running
+           ros::spinOnce();
+           ros::Duration(0.1).sleep();
+           ROS_INFO("retrying...");
+           max_tries++;
+           if (max_tries>100)
+               break;
+        }
 
     if (!server_exists) {
         ROS_WARN("could not connect to server; quitting");
@@ -312,8 +324,9 @@ int main(int argc, char** argv) {
     //action_client.sendGoal(goal); // simple example--send goal, but do not specify callbacks
     action_client.sendGoal(goal, &doneCb); // we could also name additional callback functions here, if desired
     //    action_client.sendGoal(goal, &doneCb, &activeCb, &feedbackCb); //e.g., like this
-
-    bool finished_before_timeout = action_client.waitForResult(ros::Duration(15.0));
+    double t_timeout=arrival_time+2.0; //wait 2 sec longer than expected duration of move
+    
+    bool finished_before_timeout = action_client.waitForResult(ros::Duration(t_timeout));
     //bool finished_before_timeout = action_client.waitForResult(); // wait forever...
     if (!finished_before_timeout) {
         ROS_WARN("giving up waiting on result ");

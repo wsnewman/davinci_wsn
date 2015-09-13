@@ -6,6 +6,7 @@
 #include <ros/ros.h> //Must include this for all ROS cpp projects
 #include <ros/init.h>
 #include <std_msgs/Float32.h> //Including the Float32 class from std_msgs
+#include <std_msgs/Float64.h> //Including the Float32 class from std_msgs
 //#include <baxter_core_msgs/JointCommand.h>
 #include <trajectory_msgs/JointTrajectory.h>
 #include <trajectory_msgs/JointTrajectoryPoint.h>

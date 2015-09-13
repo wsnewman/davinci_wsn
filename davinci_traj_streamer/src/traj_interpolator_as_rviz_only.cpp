@@ -1,8 +1,8 @@
 // wsn pgm to receive Davinci trajectories and interpolate them smoothly
 // as commands to Davinci;
-// starting w/ just 4DOF (no gripper)
+// 
 #include <davinci_traj_streamer/davinci_traj_streamer.h>
-//#include <davinci_kinematics/davinci_joint_publisher.h>
+#include <davinci_kinematics/davinci_joint_publisher.h>
 #include <actionlib/server/simple_action_server.h>
 
 //the following #include refers to the "action" message defined for this package
@@ -14,6 +14,13 @@
 
 using namespace std;
 
+//int g_count=0; //just for testing
+//trajectory_msgs::JointTrajectory new_trajectory; // global var to receive new traj's;
+//bool got_new_trajectory = false;
+//bool got_new_goal = false;
+//bool working_on_trajectory = false;
+//baxter_core_msgs::JointCommand right_cmd,left_cmd;
+//ros::Publisher joint_cmd_pub_right;
 
 /* maybe restore this later
 bool trajInterpStatusSvc(cwru_srv::simple_bool_service_messageRequest& request, cwru_srv::simple_bool_service_messageResponse& response) {
@@ -22,7 +29,61 @@ bool trajInterpStatusSvc(cwru_srv::simple_bool_service_messageRequest& request, 
     return true;
 }
 */
+// this is the interesting func: compute new qvec
+// update isegment and qvec according to traj_clock; 
+//if traj_clock>= final_time, use exact end coords and set "working_on_trajectory" to false   
 
+bool update_trajectory(double traj_clock, trajectory_msgs::JointTrajectory trajectory, Vectorq7x1 qvec_prev, int &isegment, Vectorq7x1 &qvec_new) {
+    trajectory_msgs::JointTrajectoryPoint trajectory_point_from, trajectory_point_to;
+    int njnts = qvec_prev.size();
+    Vectorq7x1 qvec, qvec_to, delta_qvec, dqvec;
+    int nsegs = trajectory.points.size() - 1;
+    double t_subgoal;
+    //cout<<"traj_clock = "<<traj_clock<<endl;
+    if (isegment < nsegs) {
+        trajectory_point_to = trajectory.points[isegment + 1];
+        t_subgoal = trajectory_point_to.time_from_start.toSec();
+        //cout<<"iseg = "<<isegment<<"; t_subgoal = "<<t_subgoal<<endl;
+    } else {
+        cout << "reached end of last segment" << endl;
+        trajectory_point_to = trajectory.points[nsegs];
+        t_subgoal = trajectory_point_to.time_from_start.toSec();
+        for (int i = 0; i < 7; i++) {
+            qvec_new[i] = trajectory_point_to.positions[i];
+        }
+        cout << "final time: " << t_subgoal << endl;
+        return false;
+    }
+
+    //cout<<"iseg = "<<isegment<<"; t_subgoal = "<<t_subgoal<<endl;
+    while ((t_subgoal < traj_clock)&&(isegment < nsegs)) {
+        //cout<<"loop: iseg = "<<isegment<<"; t_subgoal = "<<t_subgoal<<endl;
+        isegment++;
+        if (isegment > nsegs - 1) {
+            //last point
+            trajectory_point_to = trajectory.points[nsegs];
+            for (int i = 0; i < 7; i++) {
+                qvec_new[i] = trajectory_point_to.positions[i];
+            }
+            cout << "iseg>nsegs" << endl;
+            return false;
+        }
+
+        trajectory_point_to = trajectory.points[isegment + 1];
+        t_subgoal = trajectory_point_to.time_from_start.toSec();
+    }
+    //cout<<"t_subgoal = "<<t_subgoal<<endl;
+    //here if have a valid segment:
+    for (int i = 0; i < 7; i++) {
+        qvec_to[i] = trajectory_point_to.positions[i];
+    }
+    delta_qvec = qvec_to - qvec_prev; //this far to go until next node;
+    double delta_time = t_subgoal - traj_clock;
+    if (delta_time < dt_traj) delta_time = dt_traj;
+    dqvec = delta_qvec * dt_traj / delta_time;
+    qvec_new = qvec_prev + dqvec;
+    return true;
+}
 
 class TrajActionServer {
 private:
@@ -43,10 +104,8 @@ private:
     trajectory_msgs::JointTrajectory new_trajectory; // member var to receive new traj's;
     int g_count; //=0; //just for testing
     bool working_on_trajectory; // = false;
-    void command_joints(Eigen::VectorXd q_cmd);
-    ros::Publisher  j1_pub_,j2_pub_,j2_1_pub_,j2_2_pub_,j2_3_pub_,j2_4_pub_,j2_5_pub_,j3_pub_,j4_pub_,j5_pub_,j6_pub_,j7_pub_;
-    void initializePublishers();
-    //DavinciJointPublisher davinciJointPublisher; //(&nh_); //:&nh_;//(&nh_);//(nh_); //DavinciJointPublisher davinciJointPublisher(&nh);
+    //void cmd_pose_right(Vectorq7x1 qvec);
+    DavinciJointPublisher davinciJointPublisher; //(&nh_); //:&nh_;//(&nh_);//(nh_); //DavinciJointPublisher davinciJointPublisher(&nh);
 public:
     //TrajActionServer(ros::NodeHandle nh);
     TrajActionServer(ros::NodeHandle &nh); //define the body of the constructor outside of class definition
@@ -70,7 +129,7 @@ public:
 // the final argument  "false" says don't start the server yet.  (We'll do this in the constructor)
 
 //TrajActionServer::TrajActionServer(ros::NodeHandle nh) :nh_(nh),
-TrajActionServer::TrajActionServer(ros::NodeHandle &nh) :nh_(nh),
+TrajActionServer::TrajActionServer(ros::NodeHandle &nh) :nh_(nh),davinciJointPublisher(nh),
 as_(nh, "trajActionServer", boost::bind(&TrajActionServer::executeCB, this, _1), false)
 // in the above initialization, we name the server "example_action"
 //  clients will need to refer to this name to connect with this server
@@ -91,7 +150,14 @@ as_(nh, "trajActionServer", boost::bind(&TrajActionServer::executeCB, this, _1),
     right_cmd.names.push_back("right_w0");
     right_cmd.names.push_back("right_w1");
     right_cmd.names.push_back("right_w2");
-
+    // same order for left arm
+    left_cmd.names.push_back("left_s0");
+    left_cmd.names.push_back("left_s1");
+    left_cmd.names.push_back("left_e0");
+    left_cmd.names.push_back("left_e1");
+    left_cmd.names.push_back("left_w0");
+    left_cmd.names.push_back("left_w1");
+    left_cmd.names.push_back("left_w2");
     // do push-backs to establish desired vector size with valid joint angles
     for (int i = 0; i < 7; i++) {
         right_cmd.command.push_back(0.0); // start commanding 0 angle for right-arm 7 joints
@@ -101,7 +167,6 @@ as_(nh, "trajActionServer", boost::bind(&TrajActionServer::executeCB, this, _1),
     //DavinciJointPublisher davinciJointPublisher(&nh_); // ugly...used pointer to davinciJointPublisher to initialize in constructor
     //davinciJointPublisherPtr = &davinciJointPublisher;
     //DavinciJointPublisher davinciJointPublisher;
-    initializePublishers();
     g_count = 0;
     working_on_trajectory = false;
     ROS_INFO("starting action server: trajActionServer ");
@@ -126,75 +191,29 @@ void TrajActionServer::cmd_pose_right(Vectorq7x1 qvec) {
     joint_cmd_pub_right.publish(right_cmd);
 }
 */
-
-
-void TrajActionServer::initializePublishers() {
-    //ros::Publisher  j1_pub_,j2_pub_,j2_1_pub_,j2_2_pub_,j2_3_pub_,j2_4_pub_,j2_5_pub_,j3_pub_,j4_pub_,j5_pub_,j6_pub_,j7_pub_;
-    
-        j1_pub_ =  nh_.advertise<std_msgs::Float64>("/davinci/joint1_position_controller/command", 1, true); 
-        j2_pub_ =  nh_.advertise<std_msgs::Float64>("/davinci/joint2_position_controller/command", 1, true);
-        j2_1_pub_ =  nh_.advertise<std_msgs::Float64>("/davinci/joint2_1_position_controller/command", 1, true);
-        j2_2_pub_ =  nh_.advertise<std_msgs::Float64>("/davinci/joint2_2_position_controller/command", 1, true);
-        j2_3_pub_ =  nh_.advertise<std_msgs::Float64>("/davinci/joint2_3_position_controller/command", 1, true);
-        j2_4_pub_ =  nh_.advertise<std_msgs::Float64>("/davinci/joint2_4_position_controller/command", 1, true);
-        j2_5_pub_ =  nh_.advertise<std_msgs::Float64>("/davinci/joint2_5_position_controller/command", 1, true);
-        j3_pub_ =  nh_.advertise<std_msgs::Float64>("/davinci/joint3_position_controller/command", 1, true);
-        j4_pub_ =  nh_.advertise<std_msgs::Float64>("/davinci/joint4_position_controller/command", 1, true);
-        j5_pub_ =  nh_.advertise<std_msgs::Float64>("/davinci/joint5_position_controller/command", 1, true);
-        j6_pub_ =  nh_.advertise<std_msgs::Float64>("/davinci/joint6_position_controller/command", 1, true);
-        j7_pub_ =  nh_.advertise<std_msgs::Float64>("/davinci/joint7_position_controller/command", 1, true);      
-}
-
-void TrajActionServer::command_joints(Eigen::VectorXd q_cmd) {
-    int njnts = q_cmd.size();
-    std_msgs::Float64 qval_msg;
-    qval_msg.data = q_cmd(0);
-    j1_pub_.publish(qval_msg);
-    if (njnts>1) {
-        qval_msg.data=q_cmd(1);
-        j2_pub_.publish(qval_msg);
-        // mimic this for pitch mechanism joints:
-        j2_1_pub_.publish(qval_msg);
-        j2_2_pub_.publish(qval_msg);
-        j2_5_pub_.publish(qval_msg);
-        // the following 2 joints follow w/ negative of j2
-        qval_msg.data= -q_cmd(1);
-        j2_3_pub_.publish(qval_msg);
-        j2_4_pub_.publish(qval_msg);        
-    }
-    if (njnts>2) {
-        qval_msg.data=q_cmd(2);
-        j3_pub_.publish(qval_msg);
-    }
-    if (njnts>3) {
-        qval_msg.data=q_cmd(3);
-        j4_pub_.publish(qval_msg);
-    }
-    if (njnts>4) {
-        qval_msg.data=q_cmd(4);
-        j5_pub_.publish(qval_msg);
-    }
-    if (njnts>5) {
-        qval_msg.data=q_cmd(5);
-        j6_pub_.publish(qval_msg);
-    }
-    if (njnts>6) {
-        qval_msg.data=q_cmd(6);
-        j7_pub_.publish(qval_msg);
-    }
-}
-
 void TrajActionServer::executeCB(const actionlib::SimpleActionServer<davinci_traj_streamer::trajAction>::GoalConstPtr& goal) {
     double traj_clock, dt_segment, dq_segment, delta_q_segment, traj_final_time;
     int isegment;
     trajectory_msgs::JointTrajectoryPoint trajectory_point0;
 
+    //Vectorq7x1 qvec, qvec0, qvec_prev, qvec_new;
     Eigen::VectorXd qvec, qvec0, qvec_prev, qvec_new;
     // TEST TEST TEST
     //Eigen::VectorXd q_vec;
     //q_vec<<0.1,0.2,0.15,0.4,0.5,0.6,0.7;    
 
     ROS_INFO("in executeCB");
+    //ROS_INFO("goal input is: %d", goal->input);
+    //do work here: this is where your interesting code goes
+
+    //....
+
+    // for illustration, populate the "result" message with two numbers:
+    // the "input" is the message count, copied from goal->input (as sent by the client)
+    // the "goal_stamp" is the server's count of how many goals it has serviced so far
+    // if there is only one client, and if it is never restarted, then these two numbers SHOULD be identical...
+    // unless some communication got dropped, indicating an error
+    // send the result message back with the status of "success"
 
     g_count++; // keep track of total number of goals serviced since this server was started
     result_.return_val = g_count; // we'll use the member variable result_, defined in our class
@@ -253,15 +272,24 @@ void TrajActionServer::executeCB(const actionlib::SimpleActionServer<davinci_tra
         traj_clock += dt_traj;
         // update isegment and qvec according to traj_clock; 
         //if traj_clock>= final_time, use exact end coords and set "working_on_trajectory" to false 
-        //ROS_INFO("traj_clock = %f; updating qvec_new",traj_clock);
+        ROS_INFO("traj_clock = %f; updating qvec_new",traj_clock);
         working_on_trajectory = update_trajectory(traj_clock, new_trajectory, qvec_prev, isegment, qvec_new);
         //cmd_pose_right(qvec_new); // use qvec to populate object and send it to robot
-        //ROS_INFO("publishing qvec_new as command");
-        //davinciJointPublisher.pubJointStatesAll(qvec_new);
-        command_joints(qvec_new);  //map these to all gazebo joints and publish as commands      
+        ROS_INFO("publishing qvec_new as command");
+        davinciJointPublisher.pubJointStatesAll(qvec_new);
+;
         qvec_prev = qvec_new;
 
-        //cout << "traj_clock: " << traj_clock << "; vec:" << qvec_new.transpose() << endl;
+
+    
+    //use the publisher object to map these correctly and send them to rviz
+
+    
+   //THE FOLLOWING LINE FAILS
+   //  davinciJointPublisherPtr->pubJointStates(qvec_new); //
+     
+                
+        cout << "traj_clock: " << traj_clock << "; vec:" << qvec_new.transpose() << endl;
         ros::spinOnce();
         ros::Duration(dt_traj).sleep();
     }

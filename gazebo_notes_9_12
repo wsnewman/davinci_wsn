@@ -8,5 +8,42 @@ rosrun gazebo_ros spawn_model -file wsntest_psm_debug.base.urdf -urdf -model dvr
 
 roslaunch dvrk_model davinci_control_debug.launch
 
-test w/ (e.g.): rostopic pub /davinci/joint1_position_controller/command std_msgs/Float64 0
+(test w/ (e.g.): rostopic pub /davinci/joint1_position_controller/command std_msgs/Float64 0  )
+
+rosrun davinci_traj_streamer davinci_traj_interpolator_as
+
+rosrun davinci_traj_streamer davinci_traj_action_client_pre_pose
+  OR
+
+from /ros_ws/src/davinci_wsn/davinci_playfiles:
+  rosrun playfile_reader playfile_cartspace testfile2.csp
+
+Will do a Cartesian-space move;  currently limited to 4 jnts on one PSM
+
+
+TO_DO:
+
+  combine all of the above in a launch file
+
+  extend to gripper DOF's (model and control)
+
+  add collision models (so gripper can grab!)
+
+  publish static transforms from camera frame to PSM base frame
+
+  extend to 2nd PSM
+
+  add stereo cameras
+
+  add some models (blocks? rings?) to env.
+
+  write a demo pgm to manipulate a model
+
+  create model of needle?; write pgm to grasp needle and drive it through hoop
+    (how to init needle?  in gripper on start-up?)
+
+  create model of suture?
+
+  
+
 

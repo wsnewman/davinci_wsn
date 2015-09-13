@@ -1,0 +1,42 @@
+<launch>
+
+  <!-- Load joint controller configurations from YAML file to parameter server -->
+  <rosparam file="$(find dvrk_model)/config/davinci_control_both.yaml" command="load"/>
+
+  <!-- load the controllers -->
+  <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
+	output="screen" ns="/davinci" args="joint_state_controller
+					  one_joint1_position_controller
+                                          one_joint2_position_controller
+                                          one_joint3_position_controller
+                                          one_joint4_position_controller
+                                          one_joint2_1_position_controller
+                                          one_joint2_2_position_controller
+                                          one_joint2_3_position_controller
+                                          one_joint2_4_position_controller
+                                          one_joint2_5_position_controller
+					  one_joint5_position_controller
+					  one_joint6_position_controller
+					  one_joint7_position_controller
+					  one_joint7_position_controller_mimic
+
+					  two_joint1_position_controller
+                                          two_joint2_position_controller
+                                          two_joint3_position_controller
+                                          two_joint4_position_controller
+                                          two_joint2_1_position_controller
+                                          two_joint2_2_position_controller
+                                          two_joint2_3_position_controller
+                                          two_joint2_4_position_controller
+                                          two_joint2_5_position_controller
+					  two_joint5_position_controller
+					  two_joint6_position_controller
+					  two_joint7_position_controller
+					  two_joint7_position_controller_mimic"/>
+  <!-- convert joint states to TF transforms for rviz, etc -->
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"
+	respawn="false" output="screen">
+    <remap from="/joint_states" to="/davinci/joint_states" />
+  </node>
+
+</launch>

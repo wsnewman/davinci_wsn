@@ -37,7 +37,11 @@ int main(int argc, char** argv) {
     qvec_1.resize(14);
     qvec_2.resize(14);
     qvec_1<< 0,0,0,0,0,0,0,   0,0,0,0,0,0,0;
-    qvec_2<< -0.5, 0.4,  0.1,    0.6,    -0.7,   0.8,  0,      -0.5, 0.4,  0.1,    0.6,    -0.7,   0.8,  0;       
+    qvec_2<< 0,-0.5,0.0,0,0,0,0,   0,0,0,0,0,0,0;
+    
+    //qvec_2<< -0.5, 0.4,  0.1,    0.5,    -0.7,   0.8,  0,      -0.5, 0.4,  0.1,    0.5,    -0.7,   0.8,  0;       
+    
+    //qvec_2<< -0.5, 0.4,  0.1,    0.5,    -0.7,   0.8,  0,      -0.5, 0.4,  0.1,    0.5,    -0.7,   0.8,  0;       
   
       // std::vector<Eigen::VectorXd> des_path;
         // cout<<"creating des_path vector; enter 1:";
@@ -45,7 +49,7 @@ int main(int argc, char** argv) {
         
 
         trajectory_msgs::JointTrajectory des_trajectory; // an empty trajectory 
-        trajectory_msgs::JointTrajectoryPoint trajectory_point1,trajectory_point2; 
+        trajectory_msgs::JointTrajectoryPoint trajectory_point1,trajectory_point2,trajectory_point3; 
         
 
            
@@ -53,13 +57,16 @@ int main(int argc, char** argv) {
         davinci_traj_streamer::trajGoal goal; 
  
 
-        trajectory_point1.positions.clear(); 
-           trajectory_point2.positions.clear();
+       trajectory_point1.positions.clear(); 
+       trajectory_point2.positions.clear();
+       trajectory_point3.positions.clear();    
        trajectory_point1.time_from_start =    ros::Duration(0.0);
-       trajectory_point2.time_from_start =    ros::Duration(1.0);
+       trajectory_point2.time_from_start =    ros::Duration(2.0);
+       trajectory_point3.time_from_start =    ros::Duration(4.0);       
     for (int i=0;i<14;i++) { //pre-sizes positions vector, so can access w/ indices later
         trajectory_point1.positions.push_back(qvec_1(i));
         trajectory_point2.positions.push_back(qvec_2(i));
+        trajectory_point3.positions.push_back(qvec_1(i));        
     } 
 
     des_trajectory.points.clear(); // can clear components, but not entire trajectory_msgs
@@ -68,7 +75,8 @@ int main(int argc, char** argv) {
     des_trajectory.header.stamp = ros::Time::now(); 
        
     des_trajectory.points.push_back(trajectory_point1); // first point of the trajectory 
-    des_trajectory.points.push_back(trajectory_point2);    
+    des_trajectory.points.push_back(trajectory_point2);   
+    des_trajectory.points.push_back(trajectory_point3);     
         // copy traj to goal:
         goal.trajectory = des_trajectory;
         //cout<<"ready to connect to action server; enter 1: ";
@@ -78,8 +86,18 @@ int main(int argc, char** argv) {
         
         // attempt to connect to the server:
         ROS_INFO("waiting for server: ");
-        bool server_exists = action_client.waitForServer(ros::Duration(5.0)); // wait for up to 5 seconds
-        // something odd in above: does not seem to wait for 5 seconds, but returns rapidly if server not running
+        bool server_exists = false;
+        int max_tries = 0;
+        while (!server_exists) {
+           server_exists = action_client.waitForServer(ros::Duration(5.0)); // wait for up to 5 seconds
+           // something odd in above: does not seem to wait for 5 seconds, but returns rapidly if server not running
+           ros::spinOnce();
+           ros::Duration(0.1).sleep();
+           ROS_INFO("retrying...");
+           max_tries++;
+           if (max_tries>100)
+               break;
+        }
 
 
         if (!server_exists) {
