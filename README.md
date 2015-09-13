@@ -38,4 +38,20 @@ See libraries in davinci_kinematics for fw, ik and joint publishing.
 Still need to find and install actual joint limits.
 Need to test assumption that legal IK solutions are unique.
 
+Update Sept 13, 2015:
+
+created Gazebo extensions of urdf models.  Start with:
+`roslaunch dvrk_model wsn_davinci_gazebo.launch`
+
+Then start trajectory streamer node (for both arms and both tools):
+`rosrun davinci_traj_streamer davinci_traj_interpolator_as`
+Note: the above has been recompiled using dual-arm streamer code
+
+Test: cd to /ros_ws/src/davinci_wsn/davinci_playfiles  and run:
+`rosrun playfile_reader playfile_cartspace testfile2.csp`
+
+This will cause dual arms to move in a Gazebo simulation.
+demonstrated could know can off block using arms, but self collision checking is not working.
+
+
 
