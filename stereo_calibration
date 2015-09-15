@@ -1,0 +1,78 @@
+use checkerboard.sdf and move_gazebo_model to view calibration template from stereo cameras (in rviz)
+some useful coordinates for calibration:
+
+x,y,z = 
+upper left corner:
+enter x: -.135
+enter y: -.02
+enter z: 0.002
+
+upper right corner:
+enter x: -0.005
+enter y: -0.02
+enter z: 0.002
+
+lower right corner:
+enter x: -0.005
+enter y: -0.1
+enter z: 0.002
+
+lower left corner:
+enter x: -0.135
+enter y: -0.1
+enter z: 0.002
+
+center:
+enter x: -0.067
+enter y: -0.06
+enter z: 0.002
+
+turn gravity off;
+center, fill view:
+enter x: -0.067
+enter y: -0.06
+enter z: 0.18
+
+ROTATIONS:
+try x = -0.0067, y= -0.06, z = 0.1 and change rot's
+
+start w/ qz=0, qw=1, qy=0; vary qx; renormalize w/:
+        quat.x = qx/norm;
+        quat.y = qy/norm;
+        quat.z = qz/norm;
+        quat.w = qw/norm;
+
+steps qx = 0.1, 0.2, 0.3, 0.4 and negatives of these
+at qx=0, do steps qy of: -0.4, -0.3, ...+0.3, + 0.4
+
+combine: qx, qy = 0.2, 0.2
+-0.2, 0.2
+-0.3, 0.1
+0.3, -0.15
+
+rosrun camera_calibration cameracalibrator.py --approximate 0.1 --size 7x6 --square 0.02 right:= /davinci/right_camera/image_raw left:=/davinci/left_camera/image_raw right_camera:=/davinci/right_camera left_camera:=/davinci/left_camera
+
+mono: 
+rosrun camera_calibration cameracalibrator.py --size 7x6 --square 0.02 image:=/davinci/left_camera/image_raw camera:=/davinci/left_camera
+
+set up system with:
+roslaunch dvrk_model wsn_davinci_gazebo.launch
+rosrun rviz rviz
+rosrun davinci_traj_streamer davinci_traj_interpolator_as
+from: ros_ws/src/davinci_wsn/davinci_playfiles
+  rosrun playfile_reader playfile_cartspace retract.csp
+
+just to get arms out of the way;
+  may play with directional or spot lights in gazebo to get good lighting of checkerboard
+
+
+
+
+
+
+
+
+
+
+
+

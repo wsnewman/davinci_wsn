@@ -1,0 +1,32 @@
+checkerboard folder should be placed in the .gazebo/models directory
+can then load checkerboard via gazebo model insert menu
+
+
+set up sys with:
+roslaunch dvrk_model wsn_davinci_gazebo.launch
+rosrun rviz rviz
+rosrun davinci_traj_streamer davinci_traj_interpolator_as
+from: ros_ws/src/davinci_wsn/davinci_playfiles
+  rosrun playfile_reader playfile_cartspace retract.csp
+
+just to get arms out of the way;
+  may play with directional or spot lights in gazebo to get good lighting of checkerboard
+
+in gazebo, from "insert" menu, choose "checkerboard"
+node: 
+   rosrun move_gazebo_model move_calibration_checkerboard
+
+then: rosservice call trigger_service 1 (to trigger advancing checkerboard through scenes)
+
+ moves model checkerboard in gazebo to different poses, for use with camera calibration.
+
+In gazebo, set physics/gravity to zero, so checkerboard does not fall
+
+for stereo calibration, run:
+
+rosrun camera_calibration cameracalibrator.py --approximate 0.1 --size 7x6 --square 0.02 right:= /davinci/right_camera/image_raw left:=/davinci/left_camera/image_raw right_camera:=/davinci/right_camera left_camera:=/davinci/left_camera
+
+mono: 
+rosrun camera_calibration cameracalibrator.py --size 7x6 --square 0.02 image:=/davinci/left_camera/image_raw camera:=/davinci/left_camera
+
+needs debugging. mono calibration looks promising, but does not acquire enough samples to satisfy "skew"

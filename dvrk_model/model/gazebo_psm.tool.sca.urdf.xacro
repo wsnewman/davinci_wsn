@@ -3,6 +3,8 @@
 
   <!-- This file contains different tool urdf -->
   <xacro:include filename="$(find dvrk_model)/model/common.urdf.xacro"/>
+  <xacro:property name="GazeboRed"       value="1 0 0 1"/>
+  <material name="GazeboRed">      <color rgba="${GazeboRed}"/></material>
 
   <!-- sca  -->
   <xacro:macro name="psm_tool_sca" params="prefix">
@@ -152,8 +154,21 @@
       <child link="${prefix}tool_tip_link"/>
       <origin rpy="0 ${PI/2} ${PI/2}" xyz="0 0.0102 0"/>
     </joint>
-    <link name="${prefix}tool_tip_link"/>
+    
+    <link name="${prefix}tool_tip_link">
+     <visual>
+      <geometry>
+          <!-- put a fiducial, a sphere, at the tool tips -->
+        <sphere radius="0.001"/>
+      </geometry>
 
+    </visual>
+    </link>
+ <!--this colors the tool-tip fiducial red; oddly, this shows up in the camera view, but NOT in the rviz view -->
+  <gazebo reference="${prefix}tool_tip_link">
+    <material>Gazebo/Red</material>
+  </gazebo>
+    
  <transmission name="${prefix}tran5">
     <type>transmission_interface/SimpleTransmission</type>
     <joint name="${prefix}outer_wrist_pitch_joint">
