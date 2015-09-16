@@ -1,0 +1,96 @@
+calibration result, right camera, gazebo simu:
+('Wrote calibration data to', '/tmp/calibrationdata.tar.gz')
+('D = ', [-0.0012345375389910126, 0.07227846359382799, 0.00017782104598790976, -0.00017013672310342885, 0.0])
+('K = ', [1034.7306682811063, 0.0, 317.75160908652174, 0.0, 1034.5683920181218, 241.35904672511322, 0.0, 0.0, 1.0])
+('R = ', [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+('P = ', [1034.6517333984375, 0.0, 317.2044299624722, 0.0, 0.0, 1033.9581298828125, 240.89992912142407, 0.0, 0.0, 0.0, 1.0, 0.0])
+
+width
+640
+
+height
+480
+
+[narrow_stereo]
+
+camera matrix
+1034.730668 0.000000 317.751609
+0.000000 1034.568392 241.359047
+0.000000 0.000000 1.000000
+
+distortion
+-0.001235 0.072278 0.000178 -0.000170 0.000000
+
+rectification
+1.000000 0.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 0.000000 1.000000
+
+projection
+1034.651733 0.000000 317.204430 0.000000
+0.000000 1033.958130 240.899929 0.000000
+0.000000 0.000000 1.000000 0.000000
+
+-------------------left camera:--------------
+('D = ', [-0.0012345375389910126, 0.07227846359382799, 0.00017782104598790976, -0.00017013672310342885, 0.0])
+('K = ', [1034.7306682811063, 0.0, 317.75160908652174, 0.0, 1034.5683920181218, 241.35904672511322, 0.0, 0.0, 1.0])
+('R = ', [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
+('P = ', [1034.6517333984375, 0.0, 317.2044299624722, 0.0, 0.0, 1033.9581298828125, 240.89992912142407, 0.0, 0.0, 0.0, 1.0, 0.0])
+
+
+[image]
+
+width
+640
+
+height
+480
+
+[narrow_stereo]
+
+camera matrix
+1035.218149 0.000000 319.227679
+0.000000 1035.451266 239.045788
+0.000000 0.000000 1.000000
+
+distortion
+0.003611 -0.034490 0.000020 -0.000110 0.000000
+
+rectification
+1.000000 0.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 0.000000 1.000000
+
+projection
+1033.631470 0.000000 318.695956 0.000000
+0.000000 1033.407349 238.551149 0.000000
+0.000000 0.000000 1.000000 0.000000
+
+-----
+Projection/camera matrix
+[fx' 0 cx' Tx]
+P = [ 0 fy' cy' Ty]
+[ 0 0 1 0]
+By convention, this matrix specifies the intrinsic (camera) matrix
+of the processed (rectified) image. That is, the left 3x3 portion
+is the normal camera intrinsic matrix for the rectified image.
+It projects 3D points in the camera coordinate frame to 2D pixel
+coordinates using the focal lengths (fx', fy') and principal point
+(cx', cy') - these may differ from the values in K.
+For monocular cameras, Tx = Ty = 0. Normally, monocular cameras will
+also have R = the identity and P[1:3,1:3] = K.
+For a stereo pair, the fourth column [Tx Ty 0]' is related to the
+position of the optical center of the second camera in the first
+camera's frame. We assume Tz = 0 so both cameras are in the same
+stereo image plane. The first camera always has Tx = Ty = 0. For
+the right (second) camera of a horizontal stereo pair, Ty = 0 and
+Tx = -fx' * B, where B is the baseline between the cameras.
+Given a 3D point [X Y Z]', the projection (x, y) of the point onto
+the rectified image is given by:
+[u v w]' = P * [X Y Z 1]'
+x = u / w
+y = v / w
+This holds for both images of a stereo pair. 
+
+
+
