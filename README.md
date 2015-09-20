@@ -50,8 +50,17 @@ Note: the above has been recompiled using dual-arm streamer code
 Test: cd to /ros_ws/src/davinci_wsn/davinci_playfiles  and run:
 `rosrun playfile_reader playfile_cartspace testfile2.csp`
 
+Can move a checkerboard under simulated cameras.  First, get arms out of the way.  From same dir as above, run: 
+`rosrun playfile_reader playfile_cartspace retract.csp`
+
+Then:
+`rosrun move_gazebo_model move_calibration_checkerboard`
+
 This will cause dual arms to move in a Gazebo simulation.
-demonstrated could know can off block using arms, but self collision checking is not working.
+demonstrated could knock can off block using arms, but self collision checking is not working.
+Also, gripper not able to hold objects.
+
+
 
 
 

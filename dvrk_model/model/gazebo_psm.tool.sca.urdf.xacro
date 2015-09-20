@@ -92,14 +92,12 @@
           <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_link_2.dae"/>
         </geometry>
       </visual>
-      <collision>
+      <!--collision>
         <origin rpy="0 0 0" xyz="0 0 0"/>
           <geometry>
-              <!-- coarse model; a simple box -->
-              <!--box size="0.05 0.2 0.05"/-->
           <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_link_2.dae"/>
           </geometry>
-      </collision>
+      </collision-->
      <selfCollide>true</selfCollide>
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>
@@ -129,15 +127,13 @@
           <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_link_2.dae"/>
         </geometry>
       </visual>
-      <collision>
+      <!--collision>
         <origin rpy="0 3.1516 0" xyz="0 0 0"/>
           <geometry>
-              <!-- coarse model; a simple box -->
-              <!--box size="0.05 0.2 0.05"/-->
           <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_link_2.dae"/>
           </geometry>
-      </collision>
-     <selfCollide>true</selfCollide>
+      </collision-->
+     <selfCollide>false</selfCollide>
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <mass value="0.05"/>
@@ -147,6 +143,101 @@
         izz="0.005"/>
     </inertial> 
     </link>
+
+<!-- wsn: try adding a fingertip for grasping -->
+    <link name="${prefix}fingertip2">
+     <visual>
+        <origin rpy="0 0 0" xyz="0.001 0.005 0.0005"/>
+        <geometry>
+          <box size="0.002 0.01 0.004"/>
+        </geometry>
+     </visual>
+      <collision>
+        <origin rpy="0 0 0" xyz="0.001 0.005 0.0005"/>
+        <geometry>
+          <box size="0.002 0.01 0.004"/>
+        </geometry>
+       <surface>
+            <friction>
+              <ode>
+                <mu>30.0</mu>
+                <mu2>30.0</mu2>
+              </ode>
+            </friction>
+            <contact>
+              <ode>
+                <kp>1000000.0</kp>
+                <kd>100.0</kd>
+                <max_vel>1.0</max_vel>
+                <min_depth>0.001</min_depth>
+              </ode>
+            </contact>
+          </surface>
+      </collision>
+     <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.05"/>
+      <inertia
+        ixx="0.01" ixy="0.0" ixz="0.0"
+        iyy="0.01" iyz="0.0"
+        izz="0.005"/>
+    </inertial> 
+    </link>
+    <!-- attach fingertip pad  -->
+    <joint name="${prefix}fingertip2_joint" type="fixed">
+      <parent link="${prefix}tool_wrist_sca_ee_link_2"/>
+      <child link="${prefix}fingertip2"/>
+      <axis xyz="0 0 1"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </joint>
+
+<!-- wsn: other fingertip -->
+    <link name="${prefix}fingertip1">
+     <visual>
+        <origin rpy="0 0 0" xyz="-0.001 0.005 0.0005"/>
+        <geometry>
+          <box size="0.002 0.01 0.004"/>
+        </geometry>
+     </visual>
+      <collision>
+        <origin rpy="0 0 0" xyz="-0.001 0.005 0.0005"/>
+        <geometry>
+          <box size="0.002 0.01 0.004"/>
+        </geometry>
+       <surface>
+            <friction>
+              <ode>
+                <mu>30.0</mu>
+                <mu2>30.0</mu2>
+              </ode>
+            </friction>
+            <contact>
+              <ode>
+                <kp>1000000.0</kp>
+                <kd>100.0</kd>
+                <max_vel>1.0</max_vel>
+                <min_depth>0.001</min_depth>
+              </ode>
+            </contact>
+          </surface>
+      </collision>
+     <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.05"/>
+      <inertia
+        ixx="0.01" ixy="0.0" ixz="0.0"
+        iyy="0.01" iyz="0.0"
+        izz="0.005"/>
+    </inertial> 
+    </link>
+    <!-- attach fingertip pad 1  -->
+    <joint name="${prefix}fingertip1_joint" type="fixed">
+      <parent link="${prefix}tool_wrist_sca_ee_link_1"/>
+      <child link="${prefix}fingertip1"/>
+      <axis xyz="0 0 1"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </joint>
+
 
     <!-- tool tip -->
     <joint name="${prefix}tool_tip_joint_" type="fixed">
