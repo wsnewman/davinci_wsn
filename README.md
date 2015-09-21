@@ -60,6 +60,34 @@ This will cause dual arms to move in a Gazebo simulation.
 demonstrated could knock can off block using arms, but self collision checking is not working.
 Also, gripper not able to hold objects.
 
+Extensions to manipulation:
+start gazebo: 
+`roslaunch dvrk_model wsn_davinci_gazebo.launch`
+start trajectory server:
+`rosrun davinci_traj_streamer davinci_traj_interpolator_as`
+move robot to retracted pose w/ grippers open (from /ros_ws/src/davinci_wsn/davinci_playfiles):
+`rosrun playfile_reader playfile_cartspace retract.csp`
+insert peg into gazebo: insert model 1mm_peg (stored in .gazebo).  See 1mm_bar.tar.gz, and store this in .gazebo dir.
+
+Move peg to place it between open fingers:
+`rosrun move_gazebo_model move_gazebo_model`
+ (see source code in cwru_baxter/move_gazebo_model/src/move_gazebo_model2.cpp
+
+Close the gripper (still from playfiles dir):
+`rosrun playfile_reader playfile_cartspace retracted_close_grippers.csp`
+
+Kill the move_gazebo routine--gripper should hold peg stably.
+
+Run routine to hand off peg from right gripper to left gripper:
+`rosrun playfile_reader playfile_cartspace hand_off_peg.csp`
+
+note: gazebo model was tweaked to move cameras further forward to avoid singularities.
+
+
+
+
+
+
 
 
 
