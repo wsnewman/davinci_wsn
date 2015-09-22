@@ -201,6 +201,7 @@ int main(int argc, char** argv) {
         }
         gripper_ang1 = data[n][9];
         gripper_ang2 = data[n][19];
+        //cout<<"read: gripper_ang2 = "<<gripper_ang2<<endl;
         arrival_time = data[n][20];
         
         x_vecs1.push_back(x_vec1);
@@ -215,7 +216,8 @@ int main(int argc, char** argv) {
         y_vec2 = z_vec2.cross(x_vec2);    
         y_vecs2.push_back(y_vec2);
         tip_origins2.push_back(tip_origin2);
-        gripper_angs2.push_back(gripper_ang2);    
+        gripper_angs2.push_back(gripper_ang2);   
+        //cout<<"gripper_angs2: "<<gripper_angs2[n]<<endl;
         
         arrival_times.push_back(arrival_time);        
     }
