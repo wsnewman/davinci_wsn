@@ -87,18 +87,30 @@
     <!-- link 7-1: Outer open angle link 1 -->
     <link name="${prefix}tool_wrist_sca_ee_link_1">
       <visual>
-        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <!--origin rpy="0 0 0" xyz="0 0 0"/-->
+        <origin rpy="-1.5708 0 0" xyz="0 0 0"/>        
         <geometry>
-          <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_link_2.dae"/>
+          <!--mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_link_2.dae"/-->
+          <mesh filename="package://dvrk_model/meshes/psm/finger.dae"/>
         </geometry>
       </visual>
       <collision>
+        <!--origin rpy="0 0 0" xyz="0 0 0"/-->          
         <origin rpy="0 0 0" xyz="0 0 0"/>
           <geometry>
               <!-- coarse model; a simple box -->
               <!--box size="0.05 0.2 0.05"/-->
-          <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_link_2.dae"/>
+          <!--mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_link_2.dae"/-->
+          <mesh filename="package://dvrk_model/meshes/psm/finger.dae"/>
           </geometry>
+          <surface>
+            <friction>
+            <ode>
+              <mu>0.2</mu>
+              <mu2>0.2</mu2>
+            </ode>
+            </friction>
+          </surface>          
       </collision>
      <selfCollide>true</selfCollide>
     <inertial>
@@ -110,6 +122,49 @@
         izz="0.005"/>
     </inertial> 
     </link>
+ <!-- wsn: try adding some fingertip pads, to experiment with friction, etc -->
+    <link name="${prefix}fingertip1">
+      <visual>
+        <!--origin rpy="0 0 0" xyz="0 0 0"/-->
+        <origin rpy="0 0 0" xyz="0 0.005 0"/>        
+        <geometry>
+          <box size="0.0001 0.01 0.003"/>
+        </geometry>
+      </visual>
+      <collision>
+        <!--origin rpy="0 0 0" xyz="0 0 0"/-->          
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+          <geometry>
+                       <box size="0.001 0.02 0.003"/>
+          </geometry>
+          <gazebo>
+          <surface>
+            <friction>
+            <ode>
+              <mu>0.2</mu>
+              <mu2>0.2</mu2>
+            </ode>
+            </friction>
+          </surface>     
+          </gazebo>     
+      </collision>
+     <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.005"/>
+      <inertia
+        ixx="0.01" ixy="0.0" ixz="0.0"
+        iyy="0.01" iyz="0.0"
+        izz="0.005"/>
+     </inertial> 
+    </link>
+    
+    <joint name="${prefix}fingertip_connector1" type="fixed">
+      <parent link="${prefix}tool_wrist_sca_ee_link_1"/>
+      <child link="${prefix}fingertip1"/>
+      <axis xyz="0 0 1"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </joint>
+
 
     <!-- joint 7-2: Outer open angle 2   -->
     <joint name="${prefix}outer_wrist_open_angle_joint_mimic" type="revolute">
@@ -124,18 +179,29 @@
     <!-- link 7-2: Outer open angle link 2 -->
     <link name="${prefix}tool_wrist_sca_ee_link_2">
       <visual>
-        <origin rpy="0 3.1516 0" xyz="0 0 0"/>
+        <!--origin rpy="0 3.1516 0" xyz="0 0 0"/-->
+                <origin rpy="-1.5708 3.1516 0" xyz="0 0 0"/>
         <geometry>
-          <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_link_2.dae"/>
+          <!--mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_link_2.dae"/-->
+          <mesh filename="package://dvrk_model/meshes/psm/finger.dae"/>
+
         </geometry>
       </visual>
       <collision>
-        <origin rpy="0 3.1516 0" xyz="0 0 0"/>
+        <!--origin rpy="0 3.1516 0" xyz="0 0 0"/-->
+        <origin rpy="-1.5708 3.1516 0" xyz="0 0 0"/>
           <geometry>
-              <!-- coarse model; a simple box -->
-              <!--box size="0.05 0.2 0.05"/-->
-          <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_link_2.dae"/>
+          <!--mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_link_2.dae"/-->
+           <mesh filename="package://dvrk_model/meshes/psm/finger.dae"/>
           </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>0.2</mu>
+            <mu2>0.2</mu2>
+          </ode>
+        </friction>
+      </surface>          
       </collision>
      <selfCollide>true</selfCollide>
     <inertial>
@@ -167,7 +233,20 @@
  <!--this colors the tool-tip fiducial red; oddly, this shows up in the camera view, but NOT in the rviz view -->
   <gazebo reference="${prefix}tool_tip_link">
     <material>Gazebo/Red</material>
+    <!-- try adding some friction to enable fingers to grip objects -->
   </gazebo>
+  <!--
+    <gazebo reference="${prefix}tool_wrist_sca_ee_link_2">
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+  </gazebo>
+    </gazebo>
+    <gazebo reference="${prefix}tool_wrist_sca_ee_link_1">
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+  </gazebo>
+-->
+
     
  <transmission name="${prefix}tran5">
     <type>transmission_interface/SimpleTransmission</type>

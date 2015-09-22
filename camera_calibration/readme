@@ -44,5 +44,19 @@ rosrun camera_calibration cameracalibrator.py --approximate=1 --size 7x6 --squar
 (tried different values for --approximate)
 calibration GUI does not come up, and node does not progress beyond calling the services
 
+w/ sync program running, try:
+rosrun camera_calibration cameracalibrator.py --size 7x6 --square 0.02 right:= /davinci/left_camera/image_raw_synced left:=/davinci/left_camera/image_raw_synced right_camera:=/davinci/right_camera left_camera:=/davinci/left_camera
+
+
+rosrun stereo_image_proc stereo_image_proc left/image_raw:=/davinci/left_camera/image_raw left/camera_info:=/davinci/left_camera/camera_info right/image_raw:=/davinci/right_camera/image_raw right/camera_info:=/davinci/right_camera/camera_info
+
+result: from simu, DO get the expected topics (see http://wiki.ros.org/stereo_image_proc)
+ looks like image topics are live, but rviz does NOT display them. (??)
+ disparity appears as a topic, but it is NOT live.
+
+
+
+
+
 
 
