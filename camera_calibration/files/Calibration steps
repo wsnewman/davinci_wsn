@@ -1,0 +1,61 @@
+
+rosrun camera_calibration cameracalibrator.py --size 9x6 --square 0.008 --approximate=0.1 right:=/davinci_endo/right/image_raw left:=/davinci_endo/left/image_raw right_camera:=/davinci_endo/right left_camera:=/davinci_endo/left
+
+Try to play around with --approximate=0.XX until you see the calibration gui.
+
+After GUI finish the calibration, click save, it will
+
+('Wrote calibration data to', '/tmp/calibrationdata.tar.gz')
+
+then you click commit,
+
+The calibartion data will be save (defaut) at /.ros/camera_info/head_camera.yaml but it only has one camera data (second command overides first file)
+
+[ INFO] [1442610891.040811899]: writing calibration data to /home/rcj33/.ros/camera_info/head_camera.yaml
+[ INFO] [1442610891.074395621]: writing calibration data to /home/rcj33/.ros/camera_info/head_camera.yaml
+
+So the following is the content of the head_camera.yaml
+
+image_width: 640
+image_height: 480
+camera_name: head_camera
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [781.9543765778084, 0, 275.2471815894951, 0, 782.0072478342398, 258.9808890885196, 0, 0, 1]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [-0.356742950832143, 0.9418264153038235, 0.001429735406870241, 0.005362614141911043, 0]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [0.7774601812245401, 0.077661470306171, 0.624118868998678, -0.06745184559905881, 0.9969193312837856, -0.04002618440434068, -0.6253046578553418, -0.01097920500643248, 0.780303493470227]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [1679.227877835123, 0, -392.1668605804443, 12.41480894457326, 0, 1679.227877835123, 302.9037036895752, 0, 0, 0, 1, 0]
+
+
+So you need to go to /tmp to get calibrationdata.tar.gz (images snapshots and camera calibration data file ), unzip it and find ots.txt
+
+copy ots.txt to desktop, parse it to ini file
+
+mv ost.txt ost.ini
+
+
+then convert first half to yaml 
+
+rosrun  camera_calibration_parsers convert  ost.ini daVinci_endo_l.yaml  
+[ INFO] [1442612166.907389572]: Saved daVinci_endo_l.yaml
+
+
+then delete first half of ost.ini, convert it to yaml 
+
+$ rosrun  camera_calibration_parsers convert  ost.ini daVinci_endo_r.yaml  
+[ INFO] [1442612211.380847260]: Saved daVinci_endo_r.yaml
+
+Then move both yaml files to .ros/camera_info
+
+

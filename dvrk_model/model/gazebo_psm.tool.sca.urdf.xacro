@@ -92,15 +92,7 @@
           <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_link_2.dae"/>
         </geometry>
       </visual>
-      <!--collision>
-        <origin rpy="0 0 0" xyz="0 0 0"/>
-          <geometry>
-              <!-- coarse model; a simple box -->
-              <!--box size="0.05 0.2 0.05"/-->
-          <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_link_2.dae"/>
-          </geometry>
-      </collision-->
-     <selfCollide>true</selfCollide>
+
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <mass value="0.05"/>
