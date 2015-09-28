@@ -9,7 +9,7 @@
 
   <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
   <include file="$(find dvrk_model)/launch/empty_world.launch">
-    <arg name="world_name" value="$(find davinci_gazebo)/davinci.world"/>
+    <arg name="world_name" value="$(find dvrk_model)/launch/davinci.world"/>
     <arg name="debug" value="$(arg debug)" />
     <arg name="gui" value="$(arg gui)" />
     <arg name="paused" value="$(arg paused)"/>
@@ -29,6 +29,8 @@
 <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" ></node>
 <param name="rate" value="100" />
 
+<node pkg="tf" type="static_transform_publisher" name="rcamera_frame_bdcst" args="0 0 0 1.5708 0 1.5708   right_camera_link right_camera_optical_frame 50"/>
+<node pkg="tf" type="static_transform_publisher" name="lcamera_frame_bdcst" args="0 0 0 1.5708 0 1.5708   left_camera_link left_camera_optical_frame 50"/>
 
 <!-- may need additional transforms to line up video, which is slightly shifted from point cloud; comment out for now  -->
 <!--node pkg="tf" type="static_transform_publisher" name="camera_depth_frame" args="0.000 -0.020 0.000 0.000 0.000 0.000 1.000  $(arg camera_name)/camera_link $(arg camera_name)/camera_depth_frame 100"/-->

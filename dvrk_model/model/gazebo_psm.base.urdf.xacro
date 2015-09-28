@@ -253,14 +253,7 @@
           <mesh filename="package://dvrk_model/meshes/psm/tool_main.dae"/>      
         </geometry>
       </visual>
-      <collision>
-        <origin rpy="0 0 1.5708" xyz="0 0 0.041"/>
-          <geometry>
-              <!-- coarse model; a simple box -->
-              <!--box size="0.05 0.2 0.05"/-->
-          <mesh filename="package://dvrk_model/meshes/psm/tool_main.dae"/>      
-          </geometry>
-      </collision>
+
       <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <mass value="0.1"/>
@@ -289,14 +282,7 @@
           <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_link.dae"/>      
         </geometry>
       </visual>
-      <collision>
-        <origin rpy="0 0 1.5708" xyz="0 0 0.041"/>
-          <geometry>
-              <!-- coarse model; a simple box -->
-              <!--box size="0.05 0.2 0.05"/-->
-          <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_link.dae"/>      
-          </geometry>
-      </collision>
+
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <mass value="0.1"/>
@@ -322,14 +308,7 @@
         <geometry>
           <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_shaft_link.dae"/> 
         </geometry>
-      <collision>
-        <origin rpy="0 0 1.5708" xyz="0 0 0.041"/>
-          <geometry>
-              <!-- coarse model; a simple box -->
-              <!--box size="0.05 0.2 0.05"/-->
-          <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_shaft_link.dae"/> 
-          </geometry>
-      </collision>
+
       </visual>
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>

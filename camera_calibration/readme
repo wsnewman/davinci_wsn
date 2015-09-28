@@ -41,6 +41,9 @@ rosrun camera_calibration cameracalibrator.py --approximate=1 --size 7x6 --squar
 
 rosrun camera_calibration cameracalibrator.py --approximate=1 --size 7x6 --square 0.02 right:= /davinci/left_camera/image_raw left:=/davinci/left_camera/image_raw right_camera:=/davinci/right_camera left_camera:=/davinci/left_camera
 
+rosrun camera_calibration cameracalibrator.py --size 7x6 --square 0.02 right:= /davinci/left_camera/image_raw left:=/davinci/left_camera/image_raw right_camera:=/davinci/right_camera left_camera:=/davinci/left_camera
+
+
 (tried different values for --approximate)
 calibration GUI does not come up, and node does not progress beyond calling the services
 
