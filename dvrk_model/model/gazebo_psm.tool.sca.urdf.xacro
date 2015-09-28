@@ -36,7 +36,7 @@
           <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_link.dae"/> 
           </geometry>
       </collision>
-     <selfCollide>true</selfCollide>
+     <selfCollide>false</selfCollide>
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <mass value="0.05"/>
@@ -92,7 +92,7 @@
           <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_link_2.dae"/>
         </geometry>
       </visual>
-
+  
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <mass value="0.05"/>
@@ -121,13 +121,7 @@
           <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_link_2.dae"/>
         </geometry>
       </visual>
-      <!--collision>
-        <origin rpy="0 3.1516 0" xyz="0 0 0"/>
-          <geometry>
-          <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_link_2.dae"/>
-          </geometry>
-      </collision-->
-     <selfCollide>false</selfCollide>
+
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <mass value="0.05"/>

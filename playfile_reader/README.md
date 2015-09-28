@@ -43,5 +43,30 @@ Perform IK, pack joint-space solutions into a trajectory, and send as goal to tr
 
 //each line must contain all 21 values (in fixed order), separated by commas
 
+Modified 9/27/15:
+rosrun playfile_reader playfile_cameraspace test_cameraspace.csp
+This playfile version assumes desired gripper poses are expressed w/rt left camera optical frame;
+Uses tflistener to get transform from optical frame to each PSM base frame, then uses same
+IK code;
+
+Looks encouraging.  Gets out of reach for z ~>= 0.16 (along optical axis)
+DO get significant gravity droop.  Alignment looks good (red dot on gripper tips
+align w/ optical z axis) when gravity is reduced.  (Should improve gains and reduce
+masses).
+
+Can start up this way:
+`roslaunch dvrk_model wsn_davinci_gazebo.launch`
+which starts 2 psm's along with stereo cameras, a table and a 1mm blue bar
+`rosrun davinci_traj_streamer davinci_traj_interpolator_as`
+to get the trajectory interpolator running
+And from playfiles directory, 
+`rosrun playfile_reader playfile_cameraspace test_cameraspace.csp`
+which interprets a camera-space Cartesian file to drive the grippers.
+View in rviz to see grippers from /davinci/left_camera/image_raw
+
+
+
+
+
 
     

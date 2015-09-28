@@ -55,6 +55,39 @@ rosrun camera_calibration cameracalibrator.py --approximate 0.1 --size 7x6 --squ
 mono: 
 rosrun camera_calibration cameracalibrator.py --size 7x6 --square 0.02 image:=/davinci/left_camera/image_raw camera:=/davinci/left_camera
 
+9/27:  installed "stereo" cameras in urdf
+Odd orientation...y-axis points towards PSM's
+could not do stereo calibration (on laptop)
+w/ mono calib of left camera, got:
+
+width
+640
+
+height
+480
+
+[narrow_stereo]
+
+camera matrix
+1034.562781 0.000000 318.644445
+0.000000 1034.392179 238.094261
+0.000000 0.000000 1.000000
+
+distortion
+0.011617 -0.099409 -0.000348 -0.000291 0.000000
+
+rectification
+1.000000 0.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 0.000000 1.000000
+
+projection
+1033.167358 0.000000 318.057157 0.000000
+0.000000 1032.649170 237.533457 0.000000
+0.000000 0.000000 1.000000 0.000000
+
+
+
 
 ------------wsn, 9/25/15------------------------ 
  to address time-sync problem, run this node:
