@@ -89,6 +89,235 @@ projection
 
 
 
+------------wsn, 9/25/15------------------------ 
+ to address time-sync problem, run this node:
+rosrun camera_syncer cameras_timesync
+
+This will subscribe to Gazebo camera topics and republish them as davinci_endo/left/image_raw and
+davinci_endo/right/image_raw, but with identical timestamps (to address stereo sync problem)
+
+then run:
+
+rosrun camera_calibration cameracalibrator.py --size 7x6 --square 0.02 right:=/davinci_endo/right/image_raw left:=/davinci_endo/left/image_raw right_camera:=/davinci/right_camera left_camera:=/davinci/left_camera
+
+
+stereo calibration window comes up.
+
+Then: insert model of checkerboard; then run:
+    rosrun move_gazebo_model move_calibration_checkerboard (and enter the model name)
+
+wait for stereo param x,y,size,skew to get good enough
+
+DID find in .ros/camera_info/davinci:  left_camera.yaml and right_camera.yaml
+ALSO found in /tmp/calibrationdata.tar.gz all stored images (L/R and a file "ost.txt")
+ost.txt has data consistent with yaml files in .ros/camera_info/davinci
+
+projection maps homogeneous world coords (4x1) onto homogeneous camera coords (3x1)
+
+
+e.g., 
+projection
+1087.412815 0.000000 378.316341 0.000000
+0.000000 1087.412815 240.325647 0.000000
+0.000000 0.000000 1.000000 0.000000
+
+should be: (intrinsic matrix of the rectified image, includes 3x3 camera matrix)
+[fx'  0   cx'  Tx
+ 0    fy' cy'  Ty
+ 0    0    1    0]
+
+For a stereo pair, the fourth column [Tx Ty 0]' is related to the
+position of the optical center of the second camera in the first
+camera's frame. We assume Tz = 0 so both cameras are in the same
+stereo image plane. The first camera always has Tx = Ty = 0. For
+the right (second) camera of a horizontal stereo pair, Ty = 0 and
+Tx = -fx' * B, where B is the baseline between the cameras.
+Given a 3D point [X Y Z]', the projection (x, y) of the point onto
+the rectified image is given by:
+[u v w]' = P * [X Y Z 1]'
+u,v are in pixels;
+cx,cy is image center
+fx, fy are focal lengths, expressed in pixels
+
+x = u / w
+y = v / w
+This holds for both images of a stereo pair. 
+
+ost file for right camera has:
+projection
+1087.412815 0.000000 378.316341 10.877039
+0.000000 1087.412815 240.325647 0.000000
+0.000000 0.000000 1.000000 0.000000
+
+Note: gazebo model has cameras side-by-side with baseline offset of 10mm.
+DOES fit fx'*baseline = 1087*0.010m = 10.87 (could be slightly better; why 10.877 instead of 10.874?)
+
+focal length:  follows from camera spec fov= 0.6 and size 640x480 square???
+don't know meaning of URDF: <hackBaseline>0.07</hackBaseline>
+
+---triangulate-----
+per: http://stackoverflow.com/questions/16295551/how-to-correctly-use-cvtriangulatepoints
+
+cv::Mat pnts3D(1,N,CV_64FC4);
+cv::Mat cam0pnts(1,N,CV_64FC2);
+cv::Mat cam1pnts(1,N,CV_64FC2);
+Fill the 2 chanel point Matrices with the ponts in images.
+
+cam0 and cam1 are Matx34 camera matrices (intrinsic and extrinsic parameters). You can construct them by multiplying A*RT, where A is the intrinsic parameter matrix and RT the rotation translation 3x4 pose matrix.
+
+cv::triangulatePoints(cam0,cam1,cam0pnts,cam1pnts,pnts3D);
+
+NOTE: pnts3D NEEDs to be a 4 channel 1xN cv::Mat when defined, throws exception if not, but the result is a cv::Mat(4,N,cv_64FC1) matrix. Really confusing, but it is the only way I didn't got an exception.
+
+UPDATE: As of version 3.0 or possibly earlier, this is no longer true, and pnts3D can also be of type Mat(4,N,CV_64FC1) or may be left completely empty (as usual, it is created inside the function).
+
+
+----from:  http://www.morethantechnical.com/2012/01/04/simple-triangulation-with-opencv-from-harley-zisserman-w-code/
+
+//Triagulate points
+void TriangulatePoints(const vector& pt_set1,
+                       const vector& pt_set2,
+                       const Mat& Kinv,
+                       const Matx34d& P,
+                       const Matx34d& P1,
+                       vector& pointcloud,
+                       vector& correspImg1Pt)
+{
+#ifdef __SFM__DEBUG__
+    vector depths;
+#endif
+ 
+    pointcloud.clear();
+    correspImg1Pt.clear();
+ 
+    cout << "Triangulating...";
+    double t = getTickCount();
+    unsigned int pts_size = pt_set1.size();
+#pragma omp parallel for
+    for (unsigned int i=0; i        Point2f kp = pt_set1[i];
+        Point3d u(kp.x,kp.y,1.0);
+        Mat_ um = Kinv * Mat_(u);
+        u = um.at(0);
+        Point2f kp1 = pt_set2[i];
+        Point3d u1(kp1.x,kp1.y,1.0);
+        Mat_ um1 = Kinv * Mat_(u1);
+        u1 = um1.at(0);
+ 
+        Mat_ X = IterativeLinearLSTriangulation(u,P,u1,P1);
+ 
+//      if(X(2) > 6 || X(2) < 0) continue;
+ 
+#pragma omp critical
+        {
+            pointcloud.push_back(Point3d(X(0),X(1),X(2)));
+            correspImg1Pt.push_back(pt_set1[i]);
+#ifdef __SFM__DEBUG__
+            depths.push_back(X(2));
+#endif
+        }
+    }
+    t = ((double)getTickCount() - t)/getTickFrequency();
+    cout << "Done. ("<
+    //show "range image"
+#ifdef __SFM__DEBUG__
+    {
+        double minVal,maxVal;
+        minMaxLoc(depths, &minVal, &maxVal);
+        Mat tmp(240,320,CV_8UC3); //cvtColor(img_1_orig, tmp, CV_BGR2HSV);
+        for (unsigned int i=0; i            double _d = MAX(MIN((pointcloud[i].z-minVal)/(maxVal-minVal),1.0),0.0);
+            circle(tmp, correspImg1Pt[i], 1, Scalar(255 * (1.0-(_d)),255,255), CV_FILLED);
+        }
+        cvtColor(tmp, tmp, CV_HSV2BGR);
+        imshow("out", tmp);
+        waitKey(0);
+        destroyWindow("out");
+    }
+#endif
+}
+
+Note that you must have the camera matrix K (a 3x3 matrix of the intrinsic parameters), or rather it's inverse, noted here as Kinv.
+Results and some discussion
+
+3D view of the triangulated point cloud
+
+Notice how stuff is distorted in the 3D view... but this is not due projective ambiguity! as I am using the Essential Matrix to obtain the camera P matrices (cameras are calibrated). Hartley and Zisserman explain this in their book on page 258, and the reasons for projective ambiguity (and how to resolve it) on page 265. The distortion must be due to inaccurate point correspondence...
+
+The cool visualization is done using the excellent PCL library.
+Iterative Linear Triangulation
+
+Hartley, in his article "Triangulation" describes another triangulation algorithm, an iterative one, which he reports to "perform substantially better than the [...] non-iterative linear methods". It is, again, very easy to implement, and here it is:
+
+/**
+ From "Triangulation", Hartley, R.I. and Sturm, P., Computer vision and image understanding, 1997
+ */
+Mat_<double> IterativeLinearLSTriangulation(Point3d u,    //homogenous image point (u,v,1)
+                                            Matx34d P,          //camera 1 matrix
+                                            Point3d u1,         //homogenous image point in 2nd camera
+                                            Matx34d P1          //camera 2 matrix
+                                            ) {
+    double wi = 1, wi1 = 1;
+    Mat_<double> X(4,1);
+    for (int i=0; i<10; i++) { //Hartley suggests 10 iterations at most
+        Mat_<double> X_ = LinearLSTriangulation(u,P,u1,P1);
+        X(0) = X_(0); X(1) = X_(1); X(2) = X_(2); X_(3) = 1.0;
+         
+        //recalculate weights
+        double p2x = Mat_<double>(Mat_<double>(P).row(2)*X)(0);
+        double p2x1 = Mat_<double>(Mat_<double>(P1).row(2)*X)(0);
+         
+        //breaking point
+        if(fabsf(wi - p2x) <= EPSILON && fabsf(wi1 - p2x1) <= EPSILON) break;
+         
+        wi = p2x;
+        wi1 = p2x1;
+         
+        //reweight equations and solve
+        Matx43d A((u.x*P(2,0)-P(0,0))/wi,       (u.x*P(2,1)-P(0,1))/wi,         (u.x*P(2,2)-P(0,2))/wi,    
+                  (u.y*P(2,0)-P(1,0))/wi,       (u.y*P(2,1)-P(1,1))/wi,         (u.y*P(2,2)-P(1,2))/wi,    
+                  (u1.x*P1(2,0)-P1(0,0))/wi1,   (u1.x*P1(2,1)-P1(0,1))/wi1,     (u1.x*P1(2,2)-P1(0,2))/wi1,
+                  (u1.y*P1(2,0)-P1(1,0))/wi1,   (u1.y*P1(2,1)-P1(1,1))/wi1,     (u1.y*P1(2,2)-P1(1,2))/wi1
+                  );
+        Mat_<double> B = (Mat_<double>(4,1) <<    -(u.x*P(2,3)    -P(0,3))/wi,
+                          -(u.y*P(2,3)  -P(1,3))/wi,
+                          -(u1.x*P1(2,3)    -P1(0,3))/wi1,
+                          -(u1.y*P1(2,3)    -P1(1,3))/wi1
+                          );
+         
+        solve(A,B,X_,DECOMP_SVD);
+        X(0) = X_(0); X(1) = X_(1); X(2) = X_(2); X_(3) = 1.0;
+    }
+    return X;
+}
+
+(remember to define your EPSILON)
+This time he works iteratively in order to minimize the reprojection error of the reconstructed point to the original image coordinate, by weighting the linear equation system.
+Recap
+
+So we've seen how easy it is to implement these triangulation methods using OpenCV's nice Matx### and Mat_ structs.
+Also solve(...,DECOMP_SVD) is very handy for overdetermined non-homogeneous linear equation systems.
+Watch out for my Structure from Motion tutorial coming up, which will be all about using OpenCV to get point correspondence from pairs of images, obtaining camera matrices and recovering dense depth.
+
+If you are looking for more robust solutions for SfM and 3D reconstructions, see:
+http://phototour.cs.washington.edu/bundler/
+http://code.google.com/p/libmv/
+http://www.cs.washington.edu/homes/ccwu/vsfm/
+Enjoy,
+Roy.
+Share
+
+Tags: 3d, opencv, pcl, reconstruction, sfm, triangulation
+Support Our Work
+Need help with your project?
+ and let's talk about it!
+Source code
+
+    MoreThanTechnical Code Repository
+
+Categories
+Categories
+
+
+
 
 
 

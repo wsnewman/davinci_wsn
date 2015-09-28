@@ -1,0 +1,8 @@
+<launch>
+   <include file="usb_stereo.launch" />
+   <node name="davinci_endoscope" pkg="davinci_stereo" type="davinci_stereo_alignment" output="screen"/>
+   <group ns="davinci_endo">
+      <node name="davinci_stereo_proc" pkg="stereo_image_proc" type="stereo_image_proc"/>
+   </group>
+</launch>
+
