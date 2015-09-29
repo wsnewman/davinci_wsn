@@ -120,7 +120,7 @@ int main(int argc, char** argv)
   ros::init(argc, argv, "image_converter");
 
   ros::NodeHandle nh;
-    ros::Rate ratetimer(120);
+    ros::Rate ratetimer(5);
   ImageSyncher is(nh);
    while(ros::ok())
   {
