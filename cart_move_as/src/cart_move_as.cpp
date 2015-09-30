@@ -51,11 +51,56 @@ Eigen::Affine3d transformTFToEigen(const tf::Transform &t) {
     return e;
 }
 
+geometry_msgs::Pose transformEigenAffine3fToPose(Eigen::Affine3f e) {
+    Eigen::Vector3f Oe;
+    Eigen::Matrix3f Re;
+    geometry_msgs::Pose pose;
+    Oe = e.translation();
+    Re = e.linear();
+
+    Eigen::Quaternionf q(Re); // convert rotation matrix Re to a quaternion, q
+    pose.position.x = Oe(0);
+    pose.position.y = Oe(1);
+    pose.position.z = Oe(2);
+
+    pose.orientation.x = q.x();
+    pose.orientation.y = q.y();
+    pose.orientation.z = q.z();
+    pose.orientation.w = q.w();
+
+    return pose;
+}
+
+Eigen::Affine3d transformPoseToEigenAffine3d(geometry_msgs::Pose pose) {
+  Eigen::Affine3d affine;
+  // NEED TO FILL IN THIS FNC!!
+    Eigen::Vector3d Oe;
+
+     Oe(0)= pose.position.x;
+    Oe(1)= pose.position.y;
+    Oe(2)= pose.position.z;
+    affine.translation() = Oe;
+
+    Eigen::Quaterniond q;
+    q.x() = pose.orientation.x;
+    q.y() = pose.orientation.y;
+    q.z() = pose.orientation.z;
+    q.w() = pose.orientation.w;
+    Eigen::Matrix3d Re(q);
+
+    affine.linear() = Re;
+
+ return affine;
+}
+
 class CartMoveActionServer {
 private:
 	ros::NodeHandle nh_;
     //here is our action server to accept cartesian goals:
         actionlib::SimpleActionServer<cwru_action::cart_moveAction> cart_move_as_;
+
+    actionlib::SimpleActionClient<davinci_traj_streamer::trajAction> js_action_client_; //("trajActionServer", true);
+
     //messages to receive cartesian goals / return results:
     cwru_action::cart_moveGoal cart_goal_;
     cwru_action::cart_moveResult cart_result_;
@@ -65,10 +110,11 @@ private:
     davinci_traj_streamer::trajResult js_result_; // put results here, to be sent back to the client when done w/ goal
     //davinci_traj_streamer::trajFeedback feedback_; // not used in this example; 
     //callback fnc for joint-space action server to return result to this node:
-    void js_doneCb(const actionlib::SimpleClientGoalState& state,
+    void js_doneCb_(const actionlib::SimpleClientGoalState& state,
         const davinci_traj_streamer::trajResultConstPtr& result);
 
     Eigen::Affine3d des_gripper_affine1_,des_gripper_affine2_;
+    Eigen::Affine3d des_gripper1_affine_wrt_lcamera_,des_gripper2_affine_wrt_lcamera_;
     double gripper_ang1_;
     double gripper_ang2_; 
     double arrival_time_; 
@@ -76,7 +122,8 @@ private:
 
     // Action Server Interface
     void executeCB(const actionlib::SimpleActionServer<cwru_action::cart_moveAction>::GoalConstPtr& goal);
-
+    Davinci_fwd_solver davinci_fwd_solver_; //instantiate a forward-kinematics solver    
+    Davinci_IK_solver ik_solver_;
 public:
     //constructor:
     CartMoveActionServer(ros::NodeHandle &nh); //define the body of the constructor outside of class definition
@@ -90,10 +137,36 @@ public:
 };
 
 CartMoveActionServer::CartMoveActionServer(ros::NodeHandle &nh):nh_(nh),
-cart_move_as_(nh, "cartMoveActionServer", boost::bind(&CartMoveActionServer::executeCB, this, _1), false)
+cart_move_as_(nh, "cartMoveActionServer", boost::bind(&CartMoveActionServer::executeCB, this, _1), false),
+js_action_client_("trajActionServer", true)
 {
     ROS_INFO("starting action server: cartMoveActionServer ");
     cart_move_as_.start(); //start the server running
+
+   // attempt to connect to the server:
+    ROS_INFO("waiting for server: ");
+    bool server_exists = js_action_client_.waitForServer(ros::Duration(5.0)); // wait for up to 5 seconds
+    // something odd in above: does not seem to wait for 5 seconds, but returns rapidly if server not running
+        int max_tries = 0;
+        while (!server_exists) {
+           server_exists = js_action_client_.waitForServer(ros::Duration(5.0)); // wait for up to 5 seconds
+           // something odd in above: does not seem to wait for 5 seconds, but returns rapidly if server not running
+           ros::spinOnce();
+           ros::Duration(0.1).sleep();
+           ROS_INFO("retrying...");
+           max_tries++;
+           if (max_tries>100)
+               break;
+        }
+
+    if (!server_exists) {
+        ROS_WARN("could not connect to server; will keep trying indefinitely");
+        // bail out; optionally, could print a warning message and retry
+    }
+    server_exists = js_action_client_.waitForServer(); //wait forever 
+
+
+    ROS_INFO("connected to joint-space interpolator action server"); // if here, then we connected to the server;
 }
 
 void CartMoveActionServer::executeCB(const actionlib::SimpleActionServer<cwru_action::cart_moveAction>::GoalConstPtr& goal) {
@@ -101,11 +174,78 @@ void CartMoveActionServer::executeCB(const actionlib::SimpleActionServer<cwru_ac
     ROS_INFO("in executeCB of CartMoveActionServer");
    cart_result_.err_code=0;
    cart_move_as_.isActive();
+   //unpack the necessary info:
+   gripper_ang1_ = goal->gripper_jaw_angle1;
+   gripper_ang2_ = goal->gripper_jaw_angle2;
+   arrival_time_ = goal->move_time;
+   // interpret the desired gripper poses:
+   geometry_msgs::PoseStamped des_pose_gripper1 = goal->des_pose_gripper1;
+   geometry_msgs::PoseStamped des_pose_gripper2 = goal->des_pose_gripper2;
+   // convert the above to affine objects:
+
+
+   //do IK to convert these to joint angles:
+    //Eigen::VectorXd q_vec1,q_vec2;
+    Vectorq7x1 q_vec1,q_vec2;
+    q_vec1.resize(7);
+    q_vec2.resize(7);
+
+    
+    trajectory_msgs::JointTrajectory des_trajectory; // an empty trajectory 
+    des_trajectory.points.clear(); // can clear components, but not entire trajectory_msgs
+    des_trajectory.joint_names.clear(); //could put joint names in...but I assume a fixed order and fixed size, so this is unnecessary
+    // if using wsn's trajectory streamer action server
+    des_trajectory.header.stamp = ros::Time::now();
+
+    trajectory_msgs::JointTrajectoryPoint trajectory_point; //,trajectory_point2; 
+    trajectory_point.positions.resize(14);
+
+
+   des_gripper_affine1_ = affine_lcamera_to_psm_one_.inverse()*des_gripper1_affine_wrt_lcamera_;
+
+        ik_solver_.ik_solve(des_gripper_affine1_); //convert desired pose into equiv joint displacements
+        q_vec1 = ik_solver_.get_soln(); 
+    q_vec1(6) = gripper_ang1_; // include desired gripper opening angle
+
+   des_gripper_affine2_ = affine_lcamera_to_psm_two_.inverse()*des_gripper2_affine_wrt_lcamera_;
+    ik_solver_.ik_solve(des_gripper_affine2_); //convert desired pose into equiv joint displacements
+        q_vec2 = ik_solver_.get_soln();  
+        q_vec2(6) = gripper_ang2_;
+        for (int i=0;i<7;i++) {
+            trajectory_point.positions[i] = q_vec1(i);
+            trajectory_point.positions[i+7] = q_vec2(i);  
+        }
+      trajectory_point.time_from_start = ros::Duration(arrival_time_);
+    // NEED CONSISTENT START POINT:
+      des_trajectory.points.push_back(trajectory_point);
+    js_goal_.trajectory = des_trajectory;
+//boost::bind(&CartMoveActionServer::executeCB, this, _1)
+//xxx not compiling next line...
+
+    // Need boost::bind to pass in the 'this' pointer
+  // see example: http://library.isr.ist.utl.pt/docs/roswiki/actionlib_tutorials%282f%29Tutorials%282f%29Writing%2820%29a%2820%29Callback%2820%29Based%2820%29Simple%2820%29Action%2820%29Client.html
+  //  ac.sendGoal(goal,
+  //              boost::bind(&MyNode::doneCb, this, _1, _2),
+  //              Client::SimpleActiveCallback(),
+  //              Client::SimpleFeedbackCallback());
+
+    js_action_client_.sendGoal(js_goal_, boost::bind(&CartMoveActionServer::js_doneCb_,this,_1,_2)); // we could also name additional callback functions here, if desired
+    //    action_client.sendGoal(goal, &doneCb, &activeCb, &feedbackCb); //e.g., like this
+    double t_timeout=arrival_time_+2.0; //wait 2 sec longer than expected duration of move
+    
+    bool finished_before_timeout = js_action_client_.waitForResult(ros::Duration(t_timeout));
+    //bool finished_before_timeout = action_client.waitForResult(); // wait forever...
+    if (!finished_before_timeout) {
+        ROS_WARN("joint-space interpolation result is overdue ");
+    } else {
+        ROS_INFO("finished before timeout");
+    }
+
     ROS_INFO("completed callback" );
     cart_move_as_.setSucceeded(cart_result_); // tell the client that we were successful acting on the request, and return the "result" message 
 }
 
-void CartMoveActionServer::js_doneCb(const actionlib::SimpleClientGoalState& state,
+void CartMoveActionServer::js_doneCb_(const actionlib::SimpleClientGoalState& state,
         const davinci_traj_streamer::trajResultConstPtr& result) {
   ROS_INFO("dummy js_doneCb");
 }
@@ -163,16 +303,24 @@ int main(int argc, char** argv) {
 
     ROS_INFO("instantiating a cartesian-move action server: ");
     CartMoveActionServer cartMoveActionServer(nh);
+    //inform cartMoveActionServer of camera frame transforms:
+    cartMoveActionServer.set_lcam2psm1(affine_lcamera_to_psm_one);
+    cartMoveActionServer.set_lcam2psm2(affine_lcamera_to_psm_two);
+    while(ros::ok()) {
+      ros::spinOnce();
+    }
 
+//xxx put this stuff inside action server:
     //connect to the joint-space interpolator action server:
-   davinci_traj_streamer::trajGoal goal;
+   //davinci_traj_streamer::trajGoal goal;
 
     //cout<<"ready to connect to action server; enter 1: ";
     //cin>>ans;
     // use the name of our server, which is: trajActionServer (named in traj_interpolator_as.cpp)
-    actionlib::SimpleActionClient<davinci_traj_streamer::trajAction> action_client("trajActionServer", true);
+    //actionlib::SimpleActionClient<davinci_traj_streamer::trajAction> action_client("trajActionServer", true);
 
     // attempt to connect to the server:
+/*
     ROS_INFO("waiting for server: ");
     bool server_exists = action_client.waitForServer(ros::Duration(5.0)); // wait for up to 5 seconds
     // something odd in above: does not seem to wait for 5 seconds, but returns rapidly if server not running
@@ -253,6 +401,7 @@ int main(int argc, char** argv) {
 
     cout << "Good bye!\n";
     return 0;
+  */
 }
 
 
