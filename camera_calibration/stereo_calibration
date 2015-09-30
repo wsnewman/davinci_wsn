@@ -105,6 +105,8 @@ stereo calibration window comes up.
 
 Then: insert model of checkerboard; then run:
     rosrun move_gazebo_model move_calibration_checkerboard (and enter the model name)
+(re-ran this on Atlas machine, 9/28/15.  DID get stereo window appearing and starting to train...
+  w/ new gazebo stereo camera emulator)
 
 wait for stereo param x,y,size,skew to get good enough
 
@@ -316,10 +318,122 @@ Source code
 Categories
 Categories
 
+see also:
+https://github.com/MasteringOpenCV/code/blob/master/Chapter4_StructureFromMotion/Triangulation.cpp
+
+also, text:
+https://books.google.com/books?id=seAgiOfu2EIC&pg=PA302&lpg=PA302&dq=opencv+triangulate&source=bl&ots=hTH37fkERc&sig=B5rurQD8lVXeJMfqJ-08skizxcc&hl=en&sa=X&ved=0CFQQ6AEwCGoVChMItIjin_aSyAIVQV0eCh185QXc#v=onepage&q=opencv%20triangulate&f=false
+
+
+-----------try: -------------
+ROS_NAMESPACE=davinci rosrun stereo_image_proc stereo_image_proc /left/image_raw:=/left_camera/image_raw /right/image_raw:=/right_camera/image_raw /left/camera_info:=/left_camera/camera_info /right/camera_info:=/right_camera/camera_info
+
+rosrun stereo_image_proc stereo_image_proc /left/image_raw:=/davinci/left_camera/image_raw /right/image_raw:=/davinci/right_camera/image_raw /left/camera_info:=/davinci/left_camera/camera_info /right/camera_info:=/davinci/right_camera/camera_info
+
+The above DOES seem to work...partially.  DO get /stereo_image_proc/ topics
+  AND get /right/image_rect_color and /left/image_rect_color
+  AND can view these separately w/ image_view:
+
+
+rosrun image_view image_view image:=/right/image_rect_color (These do work)
+
+HOWEVER:
+rosrun image_view stereo_view stereo:=/ image:=image_rect_color
+  does not work;  tried:
+
+rosrun image_view stereo_view stereo:=/ image:=image_rect_color _approximate_sync:=True
+
+but still does not work; disparity is not being published
+
+
+camera_syncer republishes as:
+    camera_sub_left_(it_.subscribeCamera("davinci/left_camera/image_raw", 1,&ImageSyncher::imageLeftCb, this)),
+    camera_sub_right_(it_.subscribeCamera("davinci/right_camera/image_raw", 1,&ImageSyncher::imageRightCb, this)),
+    camera_pub_left_(it_.advertiseCamera("davinci_endo/left/image_raw", 1)),
+    camera_pub_right_(it_.advertiseCamera("davinci_endo/right/image_raw", 1)),
+
+....re-ran stereo calib w/ stereo emulator in gazebo model:
+width
+640
+
+height
+480
+
+[narrow_stereo/right]
+
+camera matrix
+1037.756291 0.000000 321.762004
+0.000000 1037.570029 242.763255
+0.000000 0.000000 1.000000
+
+distortion
+0.031832 -0.221707 0.000057 -0.000144 0.000000
+
+rectification
+0.997474 -0.062621 -0.033534
+0.062638 0.998036 -0.000532
+0.033502 -0.001570 0.999437
+
+projection
+1150.554181 0.000000 359.973003 11.785943
+0.000000 1150.554181 242.799997 0.000000
+0.000000 0.000000 1.000000 0.000000
+
+this DID update camera params in .ros/camera_info/davinci yaml files
+
+tried again to run:
+rosrun stereo_image_proc stereo_image_proc /left/image_raw:=/davinci/left_camera/image_raw /right/image_raw:=/davinci/right_camera/image_raw /left/camera_info:=/davinci/left_camera/camera_info /right/camera_info:=/davinci/right_camera/camera_info _approximate_sync:=True
+
+rectified images appear, but no disparity
+ran:
+rosrun image_view stereo_view stereo:=/ image:=image_rect_colo_approximate_sync:=True
+
+got a disparity!
+
+--------------
+9/29/15:
+  program: rosrun example_opencv find_red_pixels
+  computes red-pixel centroid and does triangulation from left/right;
+
+put left gripper tip in line w/ left-camera optical frame at z = 0.150:
+ rosrun playfile_reader playfile_cameraspace test_cameraspace4.csp
+
+rosrun tf tf_echo left_camera_optical_frame two_tool_tilink
+  claims coords:  - Translation: [-0.000, 0.000, 0.150]  (w/ gravity reduced near zero)
+
+rosrun tf tf_echo left_camera_optical_frame two_tool_tip_link
+ claims:  x,y,z = -0.000108, 0.017356, 0.150000
+
+command tip to move to: 0.01, 0.0, 0.15,
+tf claims: - Translation: [0.010, 0.000, 0.150]
+stereo claims: x,y,z = 0.009895, 0.017355, 0.150009
+
+command tip to move to: 0.01, 0.01, 0.15,
+tf: - Translation: [0.010, 0.010, 0.150]
+stereo:  x,y,z = 0.009872, 0.027315, 0.149818
+
+need to fix axis offset of 0.017355 in y-dir;
+
+added fix to wsn_davinci_gazebo,launch for transform pub of left_camera_optical_frame
+get:
+tf:  Translation: [0.010, 0.010, 0.150]
+stereo: x,y,z = 0.009887, 0.009982, 0.149855
+
+used these values:
+const double width_in_pixels = 640;
+const double height_in_pixels = 240;
+const double baseline = 0.010;
+const double f = 1034.0; // from horizontal fov = 0.6
+
+NOTE: playfile_cameraspace interprets commands w/rt left_camera_optical_frame, which has
+  z-axis down, x-axis to the LEFT, y-axis forward
+stereo is about 1mm off in x,y;  (get f closer??)
 
 
 
 
+
+  
 
 
 
