@@ -182,7 +182,15 @@ void CartMoveActionServer::executeCB(const actionlib::SimpleActionServer<cwru_ac
    geometry_msgs::PoseStamped des_pose_gripper1 = goal->des_pose_gripper1;
    geometry_msgs::PoseStamped des_pose_gripper2 = goal->des_pose_gripper2;
    // convert the above to affine objects:
+   des_gripper1_affine_wrt_lcamera_ = transformPoseToEigenAffine3d(des_pose_gripper1.pose);
+   cout<<"gripper1 desired pose;  "<<endl;
+   cout<<des_gripper1_affine_wrt_lcamera_.linear()<<endl;
+   cout<<"origin: "<<des_gripper1_affine_wrt_lcamera_.translation().transpose()<<endl;
 
+   des_gripper2_affine_wrt_lcamera_ = transformPoseToEigenAffine3d(des_pose_gripper2.pose);
+   cout<<"gripper2 desired pose;  "<<endl;
+   cout<<des_gripper2_affine_wrt_lcamera_.linear()<<endl;
+   cout<<"origin: "<<des_gripper2_affine_wrt_lcamera_.translation().transpose()<<endl;
 
    //do IK to convert these to joint angles:
     //Eigen::VectorXd q_vec1,q_vec2;
@@ -217,6 +225,8 @@ void CartMoveActionServer::executeCB(const actionlib::SimpleActionServer<cwru_ac
         }
       trajectory_point.time_from_start = ros::Duration(arrival_time_);
     // NEED CONSISTENT START POINT:
+      des_trajectory.points.push_back(trajectory_point);
+    // FAKE: push identical point on to trajectory, so satisfy 2-point requirement
       des_trajectory.points.push_back(trajectory_point);
     js_goal_.trajectory = des_trajectory;
 //boost::bind(&CartMoveActionServer::executeCB, this, _1)

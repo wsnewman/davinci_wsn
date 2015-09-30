@@ -12,6 +12,9 @@ Start up:
 `roslaunch dvrk_model wsn_davinci_gazebo.launch`
 `rosrun davinci_traj_streamer davinci_traj_interpolator_as`
 `rosrun cart_move_as cart_move_as`
-`rosrun cart_move_as cart_move_ac` (demo action client, to be built)
-## Running tests/demos
+`rosrun cart_move_as cart_move_client_example` (demo action client, to be built)
+## TODO:
+have action server start up w/ sync of robot's initial pose;
+have action server remember last pose sent  (or subscribe to joint states?)
+use current (most recent command) pose as start location, so can handle commands w/ single goal pose
     
