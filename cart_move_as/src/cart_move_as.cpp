@@ -115,8 +115,9 @@ private:
 
     Eigen::Affine3d des_gripper_affine1_,des_gripper_affine2_;
     Eigen::Affine3d des_gripper1_affine_wrt_lcamera_,des_gripper2_affine_wrt_lcamera_;
-    double gripper_ang1_;
-    double gripper_ang2_; 
+    Eigen::Affine3d gripper1_affine_last_commanded_pose_,gripper2_affine_last_commanded_pose_;
+    double gripper_ang1_,last_gripper_ang1_;
+    double gripper_ang2_,last_gripper_ang2_; 
     double arrival_time_; 
     Eigen::Affine3d affine_lcamera_to_psm_one_,affine_lcamera_to_psm_two_;
 
@@ -133,7 +134,8 @@ public:
 
     void set_lcam2psm1(Eigen::Affine3d xf) { affine_lcamera_to_psm_one_=xf; };
     void set_lcam2psm2(Eigen::Affine3d xf) { affine_lcamera_to_psm_two_=xf; };
-  
+    void set_init_pose_gripper1(Eigen::Affine3d init_pose) {gripper1_affine_last_commanded_pose_ = init_pose;  };
+    void set_init_pose_gripper2(Eigen::Affine3d init_pose) {gripper2_affine_last_commanded_pose_ = init_pose;  };    
 };
 
 CartMoveActionServer::CartMoveActionServer(ros::NodeHandle &nh):nh_(nh),
@@ -229,8 +231,6 @@ void CartMoveActionServer::executeCB(const actionlib::SimpleActionServer<cwru_ac
     // FAKE: push identical point on to trajectory, so satisfy 2-point requirement
       des_trajectory.points.push_back(trajectory_point);
     js_goal_.trajectory = des_trajectory;
-//boost::bind(&CartMoveActionServer::executeCB, this, _1)
-//xxx not compiling next line...
 
     // Need boost::bind to pass in the 'this' pointer
   // see example: http://library.isr.ist.utl.pt/docs/roswiki/actionlib_tutorials%282f%29Tutorials%282f%29Writing%2820%29a%2820%29Callback%2820%29Based%2820%29Simple%2820%29Action%2820%29Client.html
@@ -253,6 +253,13 @@ void CartMoveActionServer::executeCB(const actionlib::SimpleActionServer<cwru_ac
 
     ROS_INFO("completed callback" );
     cart_move_as_.setSucceeded(cart_result_); // tell the client that we were successful acting on the request, and return the "result" message 
+    
+    //let's remember the last pose commanded:
+    gripper1_affine_last_commanded_pose_ = des_gripper1_affine_wrt_lcamera_;
+    gripper2_affine_last_commanded_pose_ = des_gripper2_affine_wrt_lcamera_;    
+    //and the jaw opening angles:
+    last_gripper_ang1_=gripper_ang1_;
+    last_gripper_ang2_=gripper_ang2_;
 }
 
 void CartMoveActionServer::js_doneCb_(const actionlib::SimpleClientGoalState& state,
@@ -273,11 +280,11 @@ int main(int argc, char** argv) {
     ros::init(argc, argv, "playfile_jointspace"); //node name
     ros::NodeHandle nh; // create a node handle; need to pass this to the class constructor
 
-    Eigen::Affine3d des_gripper_affine1,des_gripper_affine2;
+    Eigen::Affine3d init_gripper_affine1,init_gripper_affine2;
    ROS_INFO("getting transforms from camera to PSMs");
     tf::TransformListener tfListener;
     tf::StampedTransform tfResult_one,tfResult_two;    
-
+    tf::StampedTransform tf_init_gripper1,tf_init_gripper2; 
     // get these transform values to CartMoveActionServer
     Eigen::Affine3d affine_lcamera_to_psm_one,affine_lcamera_to_psm_two,affine_gripper_wrt_base;
     // need to get these poses from goal message
@@ -292,6 +299,8 @@ int main(int argc, char** argv) {
              //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
                 tfListener.lookupTransform("left_camera_optical_frame","one_psm_base_link",  ros::Time(0), tfResult_one);
                 tfListener.lookupTransform("left_camera_optical_frame","two_psm_base_link",  ros::Time(0), tfResult_two);
+                tfListener.lookupTransform("left_camera_optical_frame","one_tool_tip_link",  ros::Time(0), tf_init_gripper1);                
+                tfListener.lookupTransform("left_camera_optical_frame","two_tool_tip_link",  ros::Time(0), tf_init_gripper2);                
             } catch(tf::TransformException &exception) {
                 ROS_ERROR("%s", exception.what());
                 tferr=true;
@@ -304,18 +313,30 @@ int main(int argc, char** argv) {
     // need to extend this to camera optical frame
     affine_lcamera_to_psm_one = transformTFToEigen(tfResult_one);
     affine_lcamera_to_psm_two = transformTFToEigen(tfResult_two); 
+    init_gripper_affine1 =  transformTFToEigen(tf_init_gripper1);  
+    init_gripper_affine2 =  transformTFToEigen(tf_init_gripper2);     
     ROS_INFO("transform from left camera to psm one:");
     cout<<affine_lcamera_to_psm_one.linear()<<endl;
     cout<<affine_lcamera_to_psm_one.translation().transpose()<<endl;
     ROS_INFO("transform from left camera to psm two:");
     cout<<affine_lcamera_to_psm_two.linear()<<endl;
     cout<<affine_lcamera_to_psm_two.translation().transpose()<<endl; 
+    
+    ROS_INFO("current pose, gripper 1:");
+    cout<<init_gripper_affine1.linear()<<endl;
+    cout<<init_gripper_affine1.translation().transpose()<<endl;     
+    
+    ROS_INFO("current pose, gripper 2:");
+    cout<<init_gripper_affine2.linear()<<endl;
+    cout<<init_gripper_affine2.translation().transpose()<<endl;      
 
     ROS_INFO("instantiating a cartesian-move action server: ");
     CartMoveActionServer cartMoveActionServer(nh);
     //inform cartMoveActionServer of camera frame transforms:
     cartMoveActionServer.set_lcam2psm1(affine_lcamera_to_psm_one);
     cartMoveActionServer.set_lcam2psm2(affine_lcamera_to_psm_two);
+    cartMoveActionServer.set_init_pose_gripper1(init_gripper_affine1);
+    cartMoveActionServer.set_init_pose_gripper2(init_gripper_affine2);    
     while(ros::ok()) {
       ros::spinOnce();
     }
