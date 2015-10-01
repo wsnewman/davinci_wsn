@@ -1,5 +1,8 @@
-// cart_move_client_example: 
-// wsn, Sept, 2015...example for test/demoof cart_move_as action server
+// cart_move_client_svc: 
+// another variation...
+// in this case, receive pose messages and communicate them to the cartesian-move action server
+
+
 
 #include<ros/ros.h>
 #include <actionlib/client/simple_action_client.h>
@@ -8,9 +11,30 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include<cwru_action/cart_moveAction.h>
+#include<cwru_davinci_srv/arm_poses.h>
 
 
 using namespace std;
+
+//utility to convert a pose to an Eigen::Affine
+Eigen::Affine3d transformPoseToEigenAffine3d(geometry_msgs::Pose pose) {
+    
+    Eigen::Affine3d e;
+    Eigen::Vector3d Oe;
+    Oe(0)=pose.position.x;
+    Oe(1)=pose.position.y;
+    Oe(2)=pose.position.z;
+
+    Eigen::Quaterniond q;
+    q.x()=pose.orientation.x;
+    q.y()=pose.orientation.y;
+    q.z()=pose.orientation.z;
+    q.w()=pose.orientation.w;  
+    Eigen::Matrix3d Re(q);
+    e.linear()=Re;
+    e.translation() = Oe;
+    return e;
+}
 
 //utility fnc to convert an Eigen::Affine3d object into an equivalent geometry_msgs::Pose object
 geometry_msgs::Pose transformEigenAffine3dToPose(Eigen::Affine3d e) {
@@ -66,6 +90,23 @@ cwru_action::cart_moveGoal pack_goal(Eigen::Affine3d affine_des_gripper1,
 	return goal;
 }
 
+geometry_msgs::PoseStamped g_arm1_des_pose,g_arm2_des_pose;
+double g_gripper1_des_ang,g_gripper2_des_ang,g_move_time;
+Eigen::Affine3d g_affine_des_gripper1,g_affine_des_gripper2;
+
+bool svcCallback(cwru_davinci_srv::arm_posesRequest& request, cwru_davinci_srv::arm_posesResponse& response)
+{
+    ROS_INFO("service callback activated");
+    g_arm1_des_pose = request.arm1_des_pose;
+    g_arm2_des_pose = request.arm2_des_pose;    
+    g_gripper1_des_ang = request.gripper1_des_ang;
+    g_gripper2_des_ang = request.gripper2_des_ang;    
+    g_move_time = request.move_time;
+    
+    g_affine_des_gripper1 = transformPoseToEigenAffine3d(g_arm1_des_pose.pose);
+    g_affine_des_gripper2 = transformPoseToEigenAffine3d(g_arm2_des_pose.pose);    
+  return true;
+}
 
 int main(int argc, char** argv) {
         ros::init(argc, argv, "cart_move_client_node"); // name this node 
@@ -76,6 +117,9 @@ int main(int argc, char** argv) {
 	Eigen::Matrix3d R_gripper1,R_gripper2;
 	Eigen::Vector3d z_vec1,z_vec2,x_vec1,x_vec2,y_vec1,y_vec2;
         
+        cwru_davinci_srv::arm_poses arm_poses_srv;
+        ros::ServiceServer service = nh.advertiseService("cart_move_svc", svcCallback);
+        ROS_INFO("cart_move_svc is available");
 
         // hard-code desired gripper poses
         // gripper 1 is DaVinci's right arm (from robot's viewpoint)

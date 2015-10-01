@@ -76,7 +76,7 @@ Eigen::Affine3d transformPoseToEigenAffine3d(geometry_msgs::Pose pose) {
   // NEED TO FILL IN THIS FNC!!
     Eigen::Vector3d Oe;
 
-     Oe(0)= pose.position.x;
+    Oe(0)= pose.position.x;
     Oe(1)= pose.position.y;
     Oe(2)= pose.position.z;
     affine.translation() = Oe;
@@ -209,27 +209,69 @@ void CartMoveActionServer::executeCB(const actionlib::SimpleActionServer<cwru_ac
 
     trajectory_msgs::JointTrajectoryPoint trajectory_point; //,trajectory_point2; 
     trajectory_point.positions.resize(14);
+    
+    // first, reiterate previous command:
+    // this could be easier, if saved previous joint-space trajectory point...
+    des_gripper_affine1_ = affine_lcamera_to_psm_one_.inverse()*gripper1_affine_last_commanded_pose_; //previous pose
+    ik_solver_.ik_solve(des_gripper_affine1_); //convert desired pose into equiv joint displacements
+    q_vec1 = ik_solver_.get_soln(); 
+    q_vec1(6) = last_gripper_ang1_; // include desired gripper opening angle
+    
+    ROS_INFO("stored previous command to gripper two: ");
+   cout<<gripper2_affine_last_commanded_pose_.linear()<<endl;
+   cout<<"origin: "<<gripper2_affine_last_commanded_pose_.translation().transpose()<<endl;
+   
+    des_gripper_affine2_ = affine_lcamera_to_psm_two_.inverse()*gripper2_affine_last_commanded_pose_; //previous pose
+    ik_solver_.ik_solve(des_gripper_affine2_); //convert desired pose into equiv joint displacements
+    q_vec2 = ik_solver_.get_soln(); 
+    cout<<"q_vec2 of stored pose: "<<endl;
+    for (int i=0;i<6;i++) {
+        cout<<q_vec2[i]<<", ";
+    }
+    cout<<endl;
+    q_vec2(6) = last_gripper_ang2_; // include desired gripper opening angle
+    
+       for (int i=0;i<7;i++) {
+            trajectory_point.positions[i] = q_vec1(i);
+            trajectory_point.positions[i+7] = q_vec2(i);  
+        }
+    cout<<"start traj pt: "<<endl;
+    for (int i=0;i<14;i++) {
+        cout<<trajectory_point.positions[i]<<", ";
+    }
+    cout<<endl;
+      trajectory_point.time_from_start = ros::Duration(0.0); // start time set to 0
+    // PUSH IN THE START POINT:
+      des_trajectory.points.push_back(trajectory_point);            
 
+    // compute and append the goal point, in joint space trajectory:
+    des_gripper_affine1_ = affine_lcamera_to_psm_one_.inverse()*des_gripper1_affine_wrt_lcamera_;
 
-   des_gripper_affine1_ = affine_lcamera_to_psm_one_.inverse()*des_gripper1_affine_wrt_lcamera_;
-
-        ik_solver_.ik_solve(des_gripper_affine1_); //convert desired pose into equiv joint displacements
-        q_vec1 = ik_solver_.get_soln(); 
+    ik_solver_.ik_solve(des_gripper_affine1_); //convert desired pose into equiv joint displacements
+    q_vec1 = ik_solver_.get_soln(); 
     q_vec1(6) = gripper_ang1_; // include desired gripper opening angle
 
-   des_gripper_affine2_ = affine_lcamera_to_psm_two_.inverse()*des_gripper2_affine_wrt_lcamera_;
+    des_gripper_affine2_ = affine_lcamera_to_psm_two_.inverse()*des_gripper2_affine_wrt_lcamera_;
     ik_solver_.ik_solve(des_gripper_affine2_); //convert desired pose into equiv joint displacements
-        q_vec2 = ik_solver_.get_soln();  
-        q_vec2(6) = gripper_ang2_;
+    q_vec2 = ik_solver_.get_soln();  
+    cout<<"q_vec2 of goal pose: "<<endl;
+    for (int i=0;i<6;i++) {
+        cout<<q_vec2[i]<<", ";
+    }
+    cout<<endl;
+    q_vec2(6) = gripper_ang2_;
         for (int i=0;i<7;i++) {
             trajectory_point.positions[i] = q_vec1(i);
             trajectory_point.positions[i+7] = q_vec2(i);  
         }
       trajectory_point.time_from_start = ros::Duration(arrival_time_);
-    // NEED CONSISTENT START POINT:
+   cout<<"goal traj pt: "<<endl;
+    for (int i=0;i<14;i++) {
+        cout<<trajectory_point.positions[i]<<", ";
+    }
+    cout<<endl;
       des_trajectory.points.push_back(trajectory_point);
-    // FAKE: push identical point on to trajectory, so satisfy 2-point requirement
-      des_trajectory.points.push_back(trajectory_point);
+
     js_goal_.trajectory = des_trajectory;
 
     // Need boost::bind to pass in the 'this' pointer
@@ -240,7 +282,8 @@ void CartMoveActionServer::executeCB(const actionlib::SimpleActionServer<cwru_ac
   //              Client::SimpleFeedbackCallback());
 
     js_action_client_.sendGoal(js_goal_, boost::bind(&CartMoveActionServer::js_doneCb_,this,_1,_2)); // we could also name additional callback functions here, if desired
-    //    action_client.sendGoal(goal, &doneCb, &activeCb, &feedbackCb); //e.g., like this
+    //    action_client.sendGoal(goal, &doneCb, &activeCb, &feedbackCb); //alt--more callback funcs possible
+    
     double t_timeout=arrival_time_+2.0; //wait 2 sec longer than expected duration of move
     
     bool finished_before_timeout = js_action_client_.waitForResult(ros::Duration(t_timeout));
@@ -254,7 +297,7 @@ void CartMoveActionServer::executeCB(const actionlib::SimpleActionServer<cwru_ac
     ROS_INFO("completed callback" );
     cart_move_as_.setSucceeded(cart_result_); // tell the client that we were successful acting on the request, and return the "result" message 
     
-    //let's remember the last pose commanded:
+    //let's remember the last pose commanded, so we can use it as start pose for next move
     gripper1_affine_last_commanded_pose_ = des_gripper1_affine_wrt_lcamera_;
     gripper2_affine_last_commanded_pose_ = des_gripper2_affine_wrt_lcamera_;    
     //and the jaw opening angles:
@@ -264,7 +307,7 @@ void CartMoveActionServer::executeCB(const actionlib::SimpleActionServer<cwru_ac
 
 void CartMoveActionServer::js_doneCb_(const actionlib::SimpleClientGoalState& state,
         const davinci_traj_streamer::trajResultConstPtr& result) {
-  ROS_INFO("dummy js_doneCb");
+  ROS_INFO("done-callback pinged by joint-space interpolator action server done");
 }
 
 
@@ -340,99 +383,6 @@ int main(int argc, char** argv) {
     while(ros::ok()) {
       ros::spinOnce();
     }
-
-//xxx put this stuff inside action server:
-    //connect to the joint-space interpolator action server:
-   //davinci_traj_streamer::trajGoal goal;
-
-    //cout<<"ready to connect to action server; enter 1: ";
-    //cin>>ans;
-    // use the name of our server, which is: trajActionServer (named in traj_interpolator_as.cpp)
-    //actionlib::SimpleActionClient<davinci_traj_streamer::trajAction> action_client("trajActionServer", true);
-
-    // attempt to connect to the server:
-/*
-    ROS_INFO("waiting for server: ");
-    bool server_exists = action_client.waitForServer(ros::Duration(5.0)); // wait for up to 5 seconds
-    // something odd in above: does not seem to wait for 5 seconds, but returns rapidly if server not running
-        int max_tries = 0;
-        while (!server_exists) {
-           server_exists = action_client.waitForServer(ros::Duration(5.0)); // wait for up to 5 seconds
-           // something odd in above: does not seem to wait for 5 seconds, but returns rapidly if server not running
-           ros::spinOnce();
-           ros::Duration(0.1).sleep();
-           ROS_INFO("retrying...");
-           max_tries++;
-           if (max_tries>100)
-               break;
-        }
-
-    if (!server_exists) {
-        ROS_WARN("could not connect to server; quitting");
-        return 0; // bail out; optionally, could print a warning message and retry
-    }
-    //server_exists = action_client.waitForServer(); //wait forever 
-
-
-    ROS_INFO("connected to action server"); // if here, then we connected to the server;
-    
-    // given a point in optical frame, premultiply by above transforms to express in psm base frames
-    
-    //do IK to convert these to joint angles:
-    //Eigen::VectorXd q_vec1,q_vec2;
-    Vectorq7x1 q_vec1,q_vec2;
-    q_vec1.resize(7);
-    q_vec2.resize(7);
-    ROS_INFO("instantiating  forward solver and an ik_solver");
-    Davinci_fwd_solver davinci_fwd_solver; //instantiate a forward-kinematics solver    
-    Davinci_IK_solver ik_solver;
-    
-    trajectory_msgs::JointTrajectory des_trajectory; // an empty trajectory 
-    des_trajectory.points.clear(); // can clear components, but not entire trajectory_msgs
-    des_trajectory.joint_names.clear(); //could put joint names in...but I assume a fixed order and fixed size, so this is unnecessary
-    // if using wsn's trajectory streamer action server
-    des_trajectory.header.stamp = ros::Time::now();
-
-    trajectory_msgs::JointTrajectoryPoint trajectory_point; //,trajectory_point2; 
-    trajectory_point.positions.resize(14);
-
-
-   des_gripper_affine1 = affine_lcamera_to_psm_one.inverse()*des_gripper1_affine_wrt_lcamera;
-
-        ik_solver.ik_solve(des_gripper_affine1); //convert desired pose into equiv joint displacements
-        q_vec1 = ik_solver.get_soln(); 
-    q_vec1(6) = g_gripper_ang1; // include desired gripper opening angle
-
-   des_gripper_affine2 = affine_lcamera_to_psm_two.inverse()*des_gripper2_affine_wrt_lcamera;
-    ik_solver.ik_solve(des_gripper_affine2); //convert desired pose into equiv joint displacements
-        q_vec2 = ik_solver.get_soln();  
-        q_vec2(6) = g_gripper_ang2;
-        for (int i=0;i<7;i++) {
-            trajectory_point.positions[i] = q_vec1(i);
-            trajectory_point.positions[i+7] = q_vec2(i);  
-        }
-      trajectory_point.time_from_start = ros::Duration(g_arrival_time);
-    // NEED CONSISTENT START POINT:
-      des_trajectory.points.push_back(trajectory_point);
-    goal.trajectory = des_trajectory;
-    action_client.sendGoal(goal, &doneCb); // we could also name additional callback functions here, if desired
-    //    action_client.sendGoal(goal, &doneCb, &activeCb, &feedbackCb); //e.g., like this
-    double t_timeout=g_arrival_time+2.0; //wait 2 sec longer than expected duration of move
-    
-    bool finished_before_timeout = action_client.waitForResult(ros::Duration(t_timeout));
-    //bool finished_before_timeout = action_client.waitForResult(); // wait forever...
-    if (!finished_before_timeout) {
-        ROS_WARN("giving up waiting on result ");
-        return 0;
-    } else {
-        ROS_INFO("finished before timeout");
-    }
-
-
-
-    cout << "Good bye!\n";
-    return 0;
-  */
 }
 
 

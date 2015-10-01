@@ -1,0 +1,13 @@
+#This service message has a command mode (an int) and fields to accept and/or return a pose
+int32 cmd_mode
+
+#some requests require the client to specify a desired pose for the marker
+#as pose-stamped, also includes the reference frame and time stamp
+geometry_msgs/PoseStamped arm1_des_pose
+geometry_msgs/PoseStamped arm2_des_pose
+float64 gripper1_des_ang
+float64 gripper2_des_ang
+float64 move_time
+---
+#response
+int32 rtn_code

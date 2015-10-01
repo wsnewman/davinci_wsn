@@ -22,8 +22,10 @@ catkin_simple()
 # Executables
 cs_add_executable(cart_move_as src/cart_move_as.cpp)
 cs_add_executable(cart_move_client_example src/cart_move_client_example.cpp)
+cs_add_executable(cart_move_client_svc src/cart_move_client_svc.cpp)
 target_link_libraries(cart_move_as davinci_kinematics ${catkin_LIBRARIES})
 target_link_libraries(cart_move_client_example ${catkin_LIBRARIES})
+target_link_libraries(cart_move_client_svc ${catkin_LIBRARIES})
 cs_install()
 cs_export()
     
