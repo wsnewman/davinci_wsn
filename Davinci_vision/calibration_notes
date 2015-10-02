@@ -37,16 +37,21 @@ from 10/1 davinci images, red ball is approx:
   red= 122
   green = 69 
   blue = 44
+   r/(g+1+b+1) = 1.06
 
 background is:
    red 173
    green 159
    blue  112
+   r/(g+1+b+1) = 0.63
 
 shadow is:
    red 108
    green 86
    blue 56
+   r/(g+1+b+1) = 0.75
+
+
 
 
 
