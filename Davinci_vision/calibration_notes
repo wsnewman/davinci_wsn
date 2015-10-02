@@ -1,0 +1,54 @@
+Davinci calibration: 10/1/15 (per Der-Lin e-mail)
+
+left projection_matrix:
+  rows: 3
+  cols: 4
+  data: [962.935699,     0,     262.567562,     0, 
+           0,       962.935699, 254.56654,      0, 
+           0,            0,        1,           0]
+
+right projection_matrix:
+  rows: 3
+  cols: 4
+  data: [962.935699,      0,        262.567562,  5.452152, 
+           0,           962.935699, 254.56654,     0, 
+           0,             0,            1,         0]
+
+should be: (intrinsic matrix of the rectified image, includes 3x3 camera matrix)
+[fx'  0   cx'  Tx
+ 0    fy' cy'  Ty
+ 0    0    1    0]
+
+interpret: 
+left and right are both 640/480 pixels;
+left and right are both 963 pixels focal length
+  central pixel: left (262.6,254.6)  vs right(262.6, 254.6)  (why not 320/240??)
+
+note: L/R foci and central pixels are IDENTICAL
+Tx = -fx' * B, where B is the baseline between the cameras.
+w/rt rectified images:
+[u v w]' = P * [X Y Z 1]'
+u,v are in pixels;
+cx,cy is image center
+fx, fy are focal lengths, expressed in pixels
+
+
+from 10/1 davinci images, red ball is approx:
+  red= 122
+  green = 69 
+  blue = 44
+
+background is:
+   red 173
+   green 159
+   blue  112
+
+shadow is:
+   red 108
+   green 86
+   blue 56
+
+
+
+
+
