@@ -84,7 +84,7 @@ int main(int argc, char** argv)
   ros::NodeHandle nh; //standard ros node handle   
   ros::ServiceServer service = nh.advertiseService("snapshot_svc", snapshotService);
   
-  cv::namedWindow(OPENCV_WINDOW);
+  //cv::namedWindow(OPENCV_WINDOW);
   cv::Mat image = cv::imread("imagel1.png"); //run this pgm from directory containing named images
   cv::imshow("lcam image 1",image);
   //cv::waitKey(5000);  
