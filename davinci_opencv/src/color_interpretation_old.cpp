@@ -8,10 +8,30 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <cwru_srv/simple_int_service_message.h>
 #include <opencv2/core/core.hpp>
+using namespace cv;
+using namespace std;
+
+int var1=1;
+Point pos;
+int radius = 20; //30 covers fiducial
+int radius_sample = 20;
+int radius_contain = 30;
+
+
 
 static const std::string OPENCV_WINDOW = "Image window";
-
 bool g_trigger=false;
+void CallBackFunc(int event, int x, int y, int flags, void* userdata)
+{
+    if  ( event == EVENT_LBUTTONDOWN )
+    {
+        pos.x=x;
+        pos.y=y;
+        var1=0;
+        cout<<"callback: x,y = "<<x<<","<<y<<endl;
+    }
+    
+}
 
 class ImageConverter
 {
@@ -78,6 +98,8 @@ bool snapshotService(cwru_srv::simple_int_service_messageRequest& request, cwru_
     return true;
 }
 
+
+
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "image_converter");
@@ -88,6 +110,54 @@ int main(int argc, char** argv)
   cv::Mat image = cv::imread("imagel1.png"); //run this pgm from directory containing named images
   cv::imshow("lcam image 1",image);
   //cv::waitKey(5000);  
+  int area = (2*radius+1)*(2*radius+1);
+     
+    //Mat frame;        
+  int i,j;
+    //select the region on the image
+    while(var1==1)
+            {
+        //set the callback function for any mouse event
+        setMouseCallback("lcam image 1", CallBackFunc, NULL);
+ 
+        //cap >> frame;         // get a new frame from camera
+        //show the image
+        imshow("lcam image 1",image);
+ 
+        // Wait until user press some key
+        waitKey(10);    
+    }
+  cout<<"broke out of var1 loop"<<endl;
+    //GaussianBlur( frame, frame, Size( 15, 15 ), 0, 0 );imshow("blur",frame);
+    //Mat imgHSV,out;
+    //cvtColor(frame, imgHSV, CV_BGR2HSV);    imshow("HSV",imgHSV);
+    //Mat final;
+    //final = frame;
+ 
+  int npixels=0;
+  int blue=0;
+  int red=0;
+  int green=0;
+  
+  //compute the color target over sample region about chosen pixel
+    for(int var2=pos.y-radius_sample;var2<=pos.y+radius_sample;var2++)
+        for(int var3=pos.x-radius_sample;var3<=pos.x+radius_sample;var3++)
+        {
+            npixels++;
+            blue+=image.at<cv::Vec3b>(var2, var3)[0];
+            green+= image.at<cv::Vec3b>(var2, var3)[1];
+            red+= image.at<cv::Vec3b>(var2, var3)[2];
+            image.at<cv::Vec3b>(var2, var3)[0] = 0;
+            image.at<cv::Vec3b>(var2, var3)[1] = 0;
+            image.at<cv::Vec3b>(var2, var3)[2] = 255;          
+        }    
+  red/=npixels;
+  blue/=npixels;
+  green/=npixels;
+  cout<<"avg red, green, blue = "<<red<<", "<<green<<", "<<blue<<endl;
+  
+  
+
   
   while(ros::ok()) {
       cv::imshow("lcam image 1",image);
