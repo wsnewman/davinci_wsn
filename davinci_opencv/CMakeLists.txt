@@ -4,6 +4,7 @@ project(davinci_opencv)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
+find_package(Eigen3 REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   image_transport
@@ -13,7 +14,9 @@ find_package(catkin REQUIRED COMPONENTS
   cwru_srv
 )
    find_package(OpenCV REQUIRED)
-   include_directories(${OpenCV_INCLUDE_DIRS})
+   include_directories( ${EIGEN3_INCLUDE_DIR} ${OpenCV_INCLUDE_DIRS})
+
+add_definitions(${EIGEN_DEFINITIONS})
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -86,10 +89,10 @@ catkin_package()
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES example_opencv
-#  CATKIN_DEPENDS cv_bridge image_transport roscpp sensor_msgs std_msgs
-#  DEPENDS system_lib
+  INCLUDE_DIRS include
+  LIBRARIES ${PROJECT_NAME}
+  CATKIN_DEPENDS cv_bridge image_transport roscpp sensor_msgs std_msgs
+  DEPENDS system_lib eigen
 )
 
 ###########
@@ -116,7 +119,7 @@ include_directories(
 #add_executable(images_timesync src/images_timesync.cpp)
 add_executable(davinci_find_red_pixels src/davinci_find_red_pixels_centroid.cpp)
 add_executable(davinci_find_blue_pixels src/davinci_find_blue_pixels_centroid.cpp)
-add_executable(color_interpretation src/color_interpretation.cpp)
+add_executable(color_interp_v2 src/color_interp_v2.cpp)
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(example_opencv_node example_opencv_generate_messages_cpp)
@@ -131,7 +134,7 @@ target_link_libraries(davinci_find_blue_pixels ${OpenCV_LIBRARIES}
    ${catkin_LIBRARIES}
  )
 
-target_link_libraries(color_interpretation ${OpenCV_LIBRARIES}   ${catkin_LIBRARIES})
+target_link_libraries(color_interp_v2 ${OpenCV_LIBRARIES}   ${catkin_LIBRARIES})
 #############
 ## Install ##
 #############
