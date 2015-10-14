@@ -114,10 +114,11 @@ double score_row(int x_ctr, int y_ctr, int half_width, Eigen::Vector3d reference
         for (int icolor = 0; icolor < 3; icolor++) {
             normalized_color[icolor] = image.at<cv::Vec3b>(icol, y_ctr)[icolor]; //             
         }
-            //cout << "x,y, colors: " << icol << ", " << y_ctr << ", " << normalized_color.transpose() << endl;
+            cout << "x,y, colors: " << icol << ", " << y_ctr << ", " << normalized_color.transpose() << endl;
             normalized_color = normalized_color / (normalized_color.norm() + 1);
             normalized_color -= scene_normalized_avg_color_vec;   
-            normalized_color = normalized_color/normalized_color.norm();
+            //normalized_color = normalized_color/normalized_color.norm();
+            cout <<"delta color, normalized: "<<normalized_color.transpose()<<endl;
             pix_score = normalized_color.dot(reference_color_vec);
             //cout<<"pixel score: "<<pix_score<<endl;
             score += pix_score;
@@ -213,7 +214,7 @@ int main(int argc, char** argv) {
     cout << "selected patch sum blue, green, red = " << blue << ", " << green << ", " << red << endl;
     cout << "selected patch normalized avg color vec: " << normalized_avg_color_vec.transpose() << endl;
     delta_color_vec= normalized_avg_color_vec-scene_normalized_avg_color_vec;
-    delta_color_vec= delta_color_vec/delta_color_vec.norm();
+    //delta_color_vec= delta_color_vec/delta_color_vec.norm();
     cout<< "patch delta color vec: "<<delta_color_vec.transpose()<<endl;
     //eval a bunch of row scores:
     double row_score;
