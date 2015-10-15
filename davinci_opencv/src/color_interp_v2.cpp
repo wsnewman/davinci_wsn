@@ -18,13 +18,14 @@ Point pos;
 int radius = 20; //30 covers fiducial
 int radius_sample = 20;
 int radius_contain = 30;
+int radius_search = 60;
 static const std::string OPENCV_WINDOW = "Image window";
 bool g_trigger = false;
 
 //ugly--make images global:
 int WIDTH = 640; //set actual values after loading image
 int HEIGHT = 480;
-cv::Mat image, image_display;
+cv::Mat image, image_display,image_display_right;
 Eigen::Vector3d scene_normalized_avg_color_vec; // avg normalized color vec over entire image
 
 void CallBackFunc(int event, int x, int y, int flags, void* userdata) {
@@ -99,26 +100,97 @@ double score_row(int x_ctr, int y_ctr, int half_width, Eigen::Vector3d reference
     Eigen::Vector3d normalized_color;
     double blue, red, green;
     double color_denom;
-    int i_start, i_end;
+    int col_start, col_end;
+    int row = y_ctr;
     double npixels = half_width * 2 + 1;
-    i_start = x_ctr - half_width;
-    if (i_start < 0) i_start = 0; // avoid running off the left edge of image
-    if (i_start > WIDTH) i_start = WIDTH - 1;
-    i_end = x_ctr + half_width;
-    if (i_end < i_start) i_end = i_start;
-    if (i_end > WIDTH - 1) i_end = WIDTH - 1;
+    col_start = x_ctr - half_width;
+    if (col_start < 0) col_start = 0; // avoid running off the left edge of image
+    if (col_start > WIDTH) col_start = WIDTH - 1;
+    col_end = x_ctr + half_width;
+    if (col_end < col_start) col_end = col_start;
+    if (col_end > WIDTH - 1) col_end = WIDTH - 1;
     double score = 0.0;
     double pix_score = 0.0;
 
-    for (int icol = i_start; icol < i_end; icol++) {
+    for (int col = col_start; col < col_end; col++) {
         for (int icolor = 0; icolor < 3; icolor++) {
-            normalized_color[icolor] = image.at<cv::Vec3b>(icol, y_ctr)[icolor]; //             
+            normalized_color[icolor] = image.at<cv::Vec3b>(row, col)[icolor]; //             
         }
-            cout << "x,y, colors: " << icol << ", " << y_ctr << ", " << normalized_color.transpose() << endl;
+            //cout << "x,y, colors: " << icol << ", " << y_ctr << ", " << normalized_color.transpose() << endl;
             normalized_color = normalized_color / (normalized_color.norm() + 1);
             normalized_color -= scene_normalized_avg_color_vec;   
             //normalized_color = normalized_color/normalized_color.norm();
-            cout <<"delta color, normalized: "<<normalized_color.transpose()<<endl;
+            //cout <<"delta color, normalized: "<<normalized_color.transpose()<<endl;
+            pix_score = normalized_color.dot(reference_color_vec);
+            //cout<<"pixel score: "<<pix_score<<endl;
+            score += pix_score;
+
+    }
+    return score / npixels;
+}
+
+
+// given a column, defined by x_ctr, search over y_ctr-half_width to y_ctr+half_width to get color similarity
+double score_col(int x_ctr, int y_ctr, int half_width, Eigen::Vector3d reference_color_vec) {
+    Eigen::Vector3d normalized_color;
+    double blue, red, green;
+    double color_denom;
+    int row_start, row_end;
+    int col = x_ctr;
+    double npixels = half_width * 2 + 1;
+    row_start = y_ctr - half_width;
+    if (row_start < 0) row_start = 0; // avoid running off the left edge of image
+    if (row_start > HEIGHT) row_start = HEIGHT - 1;
+    row_end = y_ctr + half_width;
+    if (row_end < row_start) row_end = row_start;
+    if (row_end > HEIGHT - 1) row_end = HEIGHT - 1;
+    double score = 0.0;
+    double pix_score = 0.0;
+
+    for (int irow = row_start; irow < row_end; irow++) {
+        for (int icolor = 0; icolor < 3; icolor++) {
+            normalized_color[icolor] = image.at<cv::Vec3b>(irow, col)[icolor]; //             
+        }
+            //cout << "x,y, colors: " << icol << ", " << y_ctr << ", " << normalized_color.transpose() << endl;
+            normalized_color = normalized_color / (normalized_color.norm() + 1);
+            normalized_color -= scene_normalized_avg_color_vec;   
+            //normalized_color = normalized_color/normalized_color.norm();
+            //cout <<"delta color, normalized: "<<normalized_color.transpose()<<endl;
+            pix_score = normalized_color.dot(reference_color_vec);
+            //cout<<"pixel score: "<<pix_score<<endl;
+            score += pix_score;
+
+    }
+    return score / npixels;
+}
+
+//score_col_right(xval, y_best, radius_sample, delta_color_vec);
+// given a column, defined by x_ctr, search over y_ctr-half_width to y_ctr+half_width to get color similarity
+double score_col_right(int x_ctr, int y_ctr, int half_width, Eigen::Vector3d reference_color_vec) {
+    Eigen::Vector3d normalized_color;
+    double blue, red, green;
+    double color_denom;
+    int row_start, row_end;
+    int col = x_ctr;
+    double npixels = half_width * 2 + 1;
+    row_start = y_ctr - half_width;
+    if (row_start < 0) row_start = 0; // avoid running off the left edge of image
+    if (row_start > HEIGHT) row_start = HEIGHT - 1;
+    row_end = y_ctr + half_width;
+    if (row_end < row_start) row_end = row_start;
+    if (row_end > HEIGHT - 1) row_end = HEIGHT - 1;
+    double score = 0.0;
+    double pix_score = 0.0;
+
+    for (int irow = row_start; irow < row_end; irow++) {
+        for (int icolor = 0; icolor < 3; icolor++) {
+            normalized_color[icolor] = image_display_right.at<cv::Vec3b>(irow, col)[icolor]; //             
+        }
+            //cout << "x,y, colors: " << icol << ", " << y_ctr << ", " << normalized_color.transpose() << endl;
+            normalized_color = normalized_color / (normalized_color.norm() + 1);
+            normalized_color -= scene_normalized_avg_color_vec;   
+            //normalized_color = normalized_color/normalized_color.norm();
+            //cout <<"delta color, normalized: "<<normalized_color.transpose()<<endl;
             pix_score = normalized_color.dot(reference_color_vec);
             //cout<<"pixel score: "<<pix_score<<endl;
             score += pix_score;
@@ -133,10 +205,13 @@ int main(int argc, char** argv) {
     ros::ServiceServer service = nh.advertiseService("snapshot_svc", snapshotService);
     //cv::namedWindow(OPENCV_WINDOW);
     image = cv::imread("imagel1.png"); //run this pgm from directory containing named images
-    image_display = image; // make a copy for mark-up display
+    image_display = cv::imread("imagel1.png"); // make a copy for mark-up display
+    image_display_right = cv::imread("imager1.png"); // corresponding right image  
     cv::imshow("lcam image 1", image_display);
+    cv::imshow("rcam image 1", image_display_right);
     Eigen::VectorXd col_rt, col_lft, row_top, row_bot;
     Eigen::Vector3d color_vec, normalized_avg_color_vec, delta_color_vec;
+    Eigen::Vector3d pixel_vec;
     WIDTH = image.cols;
     HEIGHT = image.rows;
     cout << "width, height = " << WIDTH << ", " << HEIGHT << endl;
@@ -160,13 +235,15 @@ int main(int argc, char** argv) {
     int blue = 0;
     int red = 0;
     int green = 0;
-
-    for (int i = 0; i < WIDTH; i++)
-        for (int j = 0; j < HEIGHT; j++) {
+    cout<<"start avg loop"<<endl;
+    for (int irow = 0; irow < HEIGHT; irow++)
+        for (int j = 0; j < WIDTH; j++) {
+            //cout<<"i,j="<<irow<<", "<<j<<endl;
             npixels++;
-            blue += image.at<cv::Vec3b>(i, j)[0]; //(i,j) is x,y = col, row
-            green += image.at<cv::Vec3b>(i, j)[1];
-            red += image.at<cv::Vec3b>(i, j)[2];
+            // access as (row,col)
+            blue += image.at<cv::Vec3b>(irow, j)[0]; //(i,j) is x,y = col, row
+            green += image.at<cv::Vec3b>(irow, j)[1];
+            red += image.at<cv::Vec3b>(irow, j)[2];
         }
     //red/=npixels;
     //blue/=npixels;
@@ -194,12 +271,12 @@ int main(int argc, char** argv) {
     for (int var2 = pos.y - radius_sample; var2 <= pos.y + radius_sample; var2++)
         for (int var3 = pos.x - radius_sample; var3 <= pos.x + radius_sample; var3++) {
             npixels++;
-            blue += image.at<cv::Vec3b>(var2, var3)[0];
+            blue += image.at<cv::Vec3b>(var2, var3)[0]; //row, col order = y,x
             green += image.at<cv::Vec3b>(var2, var3)[1];
             red += image.at<cv::Vec3b>(var2, var3)[2];
-            image_display.at<cv::Vec3b>(var2, var3)[0] = 0;
-            image_display.at<cv::Vec3b>(var2, var3)[1] = 0;
-            image_display.at<cv::Vec3b>(var2, var3)[2] = 255;
+            //image_display.at<cv::Vec3b>(var2, var3)[0] = 0;
+            //image_display.at<cv::Vec3b>(var2, var3)[1] = 0;
+            //image_display.at<cv::Vec3b>(var2, var3)[2] = 255;
         }
 
     //red/=npixels;
@@ -216,16 +293,156 @@ int main(int argc, char** argv) {
     delta_color_vec= normalized_avg_color_vec-scene_normalized_avg_color_vec;
     //delta_color_vec= delta_color_vec/delta_color_vec.norm();
     cout<< "patch delta color vec: "<<delta_color_vec.transpose()<<endl;
-    //eval a bunch of row scores:
-    double row_score;
-    for (int ycol = pos.y; ycol < pos.y + 60; ycol += 10) {
-        row_score = score_row(pos.x, ycol, radius_sample, delta_color_vec);
-        cout << "ycol,  row score: " << ycol << ", " << row_score << endl;
+    cout<<"dot with self = "<<delta_color_vec.dot(delta_color_vec)<<endl;
+    /*
+    cout<<"enter 1: ";
+    int ans;
+    cin>>ans;
+    cout<<"test pixels in square region:"<<endl;
+      for (int var2 = pos.y - radius_sample; var2 <= pos.y + radius_sample; var2++)
+        for (int var3 = pos.x - radius_sample; var3 <= pos.x + radius_sample; var3++) {
+            pixel_vec[0] = image.at<cv::Vec3b>(var2, var3)[0]; //row, col order = y,x
+            pixel_vec[1] = image.at<cv::Vec3b>(var2, var3)[1];
+            pixel_vec[2] = image.at<cv::Vec3b>(var2, var3)[2];
+            cout<<"pix colors: "<<pixel_vec.transpose()<<endl;
+            pixel_vec/= (pixel_vec.norm()+1);
+            pixel_vec-= scene_normalized_avg_color_vec;
+            cout<<"row,col = "<<var2<<","<<var3<<"; dpix: "<<pixel_vec.transpose()<<endl;
+            cout<<"dot prod: "<<pixel_vec.dot(delta_color_vec)<<endl;
+        }
+     * */
+    //eval a bunch of row and col scores:
+    //profile: fill an array of column scores; find the peak cumulative score from col_ctr-radius to col_ctr+radius
+    //create second array as integral: first entry is sum(col_min:col_min+2*radius)
+    // could use an array from 0 to WIDTH-1
+    Eigen::VectorXd col_scores= Eigen::MatrixXd::Zero(WIDTH-1,1);
+    Eigen::VectorXd cum_col_scores= Eigen::MatrixXd::Zero(WIDTH-1,1);    
+    // next entry is sum(0)
+    double col_score;
+    //x val is column; score the color match for a range of columns
+    for (int xval = pos.x-radius_search; xval < pos.x + radius_search; xval++) {
+        col_score = score_col(xval, pos.y, radius_sample, delta_color_vec);
+        cout << "xval,  col score: " << xval << ", " << col_score << endl;
+        col_scores[xval] = col_score;
     }
+    //now compute cumulative scores over given radius
+    for (int xctr = pos.x-radius_search+radius_contain; xctr < pos.x + radius_search - radius_contain; xctr++) {
+        for (int icol=xctr-radius_contain;icol<xctr+radius_contain;icol++) {
+            cum_col_scores[xctr]+=col_scores[icol];
+        }
+    }
+    int x_best = pos.x-radius_search+radius_contain;
+    double cum_col_score_best = cum_col_scores[x_best];
+    cout<<"xctr, cum score: "<<endl;
+    for (int xctr = pos.x-radius_search+radius_contain; xctr < pos.x + radius_search - radius_contain; xctr++) {
+        cout<<xctr<<", "<<cum_col_scores[xctr]<<endl;
+        if (cum_col_scores[xctr]>cum_col_score_best) {
+            cum_col_score_best=cum_col_scores[xctr];
+            x_best = xctr;
+        }
+    }
+    cout<<"optimal column, x_best = "<<x_best<<endl;
 
-
+    // repeat for row scores to find y_best (best column)
+    Eigen::VectorXd row_scores= Eigen::MatrixXd::Zero(HEIGHT-1,1);
+    Eigen::VectorXd cum_row_scores= Eigen::MatrixXd::Zero(HEIGHT-1,1);    
+    // next entry is sum(0)
+    double row_score;
+    //y val is row; score the color match for a range of rows
+    for (int yval = pos.y-radius_search; yval < pos.y + radius_search; yval++) {
+        row_score = score_row(x_best, yval, radius_sample, delta_color_vec);
+        cout << "yval,  col score: " << yval << ", " << col_score << endl;
+        row_scores[yval] = row_score;
+    }
+    //now compute cumulative scores over given radius
+    for (int yctr = pos.y-radius_search+radius_contain; yctr < pos.y + radius_search - radius_contain; yctr++) {
+        for (int irow=yctr-radius_contain;irow<yctr+radius_contain;irow++) {
+            cum_row_scores[yctr]+=row_scores[irow];
+        }
+    }
+    int y_best = pos.y-radius_search+radius_contain;
+    double cum_row_score_best = cum_row_scores[y_best];
+    cout<<"yctr, cum score: "<<endl;
+    for (int yctr = pos.y-radius_search+radius_contain; yctr < pos.y + radius_search - radius_contain; yctr++) {
+        cout<<yctr<<", "<<cum_row_scores[yctr]<<endl;
+        if (cum_row_scores[yctr]>cum_row_score_best) {
+            cum_row_score_best=cum_row_scores[yctr];
+            y_best = yctr;
+        }
+    }
+    cout<<"optimal row, y_best = "<<y_best<<endl;
+     cout<<"optimal column, x_best = "<<x_best<<endl;   
+    //repeat the search over columns, using y_best:
+    cout<<"repeat x_best search: "<<endl;
+   for (int xval = x_best-radius_search; xval < x_best + radius_search; xval++) {
+        col_score = score_col(xval, y_best, radius_sample, delta_color_vec);
+        //cout << "xval,  col score: " << xval << ", " << col_score << endl;
+        col_scores[xval] = col_score;
+    }
+    //now compute cumulative scores over given radius
+    for (int xctr = x_best-radius_search+radius_contain; xctr < x_best + radius_search - radius_contain; xctr++) {
+        for (int icol=xctr-radius_contain;icol<xctr+radius_contain;icol++) {
+            cum_col_scores[xctr]+=col_scores[icol];
+        }
+    }
+    double x_best2 = x_best-radius_search+radius_contain;
+    cum_col_score_best = cum_col_scores[x_best2];
+    //cout<<"xctr, cum score: "<<endl;
+    for (int xctr = x_best-radius_search+radius_contain; xctr < x_best + radius_search - radius_contain; xctr++) {
+        //cout<<xctr<<", "<<cum_col_scores[xctr]<<endl;
+        if (cum_col_scores[xctr]>cum_col_score_best) {
+            cum_col_score_best=cum_col_scores[xctr];
+            x_best2 = xctr;
+        }
+    }
+    cout<<"optimal column, x_best = "<<x_best2<<endl;    
+    
+    for (int var2 = y_best - radius_sample; var2 <= y_best + radius_sample; var2++)
+        for (int var3 = x_best - radius_sample; var3 <= x_best + radius_sample; var3++) {
+            image_display.at<cv::Vec3b>(var2, var3)[0] = 0;
+            image_display.at<cv::Vec3b>(var2, var3)[1] = 0;
+            image_display.at<cv::Vec3b>(var2, var3)[2] = 255;
+        }    
+    
+    // search for optimal column, given optimal row, in right image:
+    //int x_best_right = x_best2-radius_search;
+    //repeat the search over columns, using y_best:
+    cout<<"repeat x_best search for right image: "<<endl;
+   for (int xval = x_best2-radius_search; xval < x_best2 + 2*radius_search; xval++) {
+        col_score = score_col_right(xval, y_best, radius_sample, delta_color_vec);
+        //cout << "xval,  col score: " << xval << ", " << col_score << endl;
+        col_scores[xval] = col_score;
+    }
+    //now compute cumulative scores over given radius
+    for (int xctr = x_best2-radius_search+radius_contain; xctr < x_best2 + 2*radius_search - radius_contain; xctr++) {
+        cum_col_scores[xctr]=0;
+        for (int icol=xctr-radius_contain;icol<xctr+radius_contain;icol++) {
+            cum_col_scores[xctr]+=col_scores[icol];
+        }
+    }
+    double x_best_right = x_best2-radius_search+radius_contain;
+    cum_col_score_best = cum_col_scores[x_best_right];
+    //cout<<"xctr, cum score: "<<endl;
+    for (int xctr = x_best_right-radius_search+radius_contain; xctr < x_best_right + 2*radius_search - radius_contain; xctr++) {
+        //cout<<xctr<<", "<<cum_col_scores[xctr]<<endl;
+        if (cum_col_scores[xctr]>cum_col_score_best) {
+            cum_col_score_best=cum_col_scores[xctr];
+            x_best_right = xctr;
+        }
+    }
+    cout<<"optimal column, x_best_right = "<<x_best_right<<endl;    
+    
+    for (int var2 = y_best - radius_sample; var2 <= y_best + radius_sample; var2++)
+        for (int var3 = x_best_right - radius_sample; var3 <= x_best_right + radius_sample; var3++) {
+            image_display_right.at<cv::Vec3b>(var2, var3)[0] = 0;
+            image_display_right.at<cv::Vec3b>(var2, var3)[1] = 0;
+            image_display_right.at<cv::Vec3b>(var2, var3)[2] = 255;
+        }        
+    
+    
     while (ros::ok()) {
         cv::imshow("lcam image 1", image_display);
+        cv::imshow("rcam image 1", image_display_right);
         ros::spinOnce();
         //ros::Duration(0.1).sleep();
         cv::waitKey(30); //need this to allow image display
