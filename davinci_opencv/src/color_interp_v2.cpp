@@ -15,16 +15,27 @@ using namespace cv;
 using namespace std;
 int var1 = 1;
 Point pos;
+//search params for red ball
 int radius = 20; //30 covers fiducial
 int radius_sample = 20;
 int radius_contain = 30;
 int radius_search = 60;
+
+//default values: change these, as appropriate
+int WIDTH = 640; //set actual values after loading image
+int HEIGHT = 480;
+int row_ctr = HEIGHT/2;
+int col_ctr_left= WIDTH/2;
+int col_ctr_rt = WIDTH/2;
+const double g_baseline = 0.005; //baseline horizontal separation of cameras, in meters
+const double g_focal_length = 1034.0; // focal length, in pixels
+
+
+
 static const std::string OPENCV_WINDOW = "Image window";
 bool g_trigger = false;
 
 //ugly--make images global:
-int WIDTH = 640; //set actual values after loading image
-int HEIGHT = 480;
 cv::Mat image, image_display,image_display_right;
 Eigen::Vector3d scene_normalized_avg_color_vec; // avg normalized color vec over entire image
 
@@ -197,6 +208,24 @@ double score_col_right(int x_ctr, int y_ctr, int half_width, Eigen::Vector3d ref
 
     }
     return score / npixels;
+}
+
+Eigen::Vector3d  triangulate(int row,int col_left, int col_right) {
+    Eigen::Vector3d xyz_vec;
+    double disparity;
+    double du_left,du_right;
+    du_left = col_left - col_ctr_left;
+    du_right = col_right- col_ctr_rt;
+    disparity = du_right - du_left; 
+    cout<<"disparity = "<<disparity<<endl;
+    double x,y,z;
+    z = g_baseline*g_focal_length/disparity;
+    x = 0.5*((du_right + du_left)/g_focal_length)*z -g_baseline/2; //offset g_baseline to reference w/rt left camera frame
+    y = (row/g_focal_length)*z;    
+    xyz_vec[0] = x;
+    xyz_vec[1] = y;
+    xyz_vec[2] = z;  
+    return xyz_vec;
 }
 
 int main(int argc, char** argv) {
@@ -385,17 +414,17 @@ int main(int argc, char** argv) {
             cum_col_scores[xctr]+=col_scores[icol];
         }
     }
-    double x_best2 = x_best-radius_search+radius_contain;
-    cum_col_score_best = cum_col_scores[x_best2];
+    double x_best_left = x_best-radius_search+radius_contain;
+    cum_col_score_best = cum_col_scores[x_best_left];
     //cout<<"xctr, cum score: "<<endl;
     for (int xctr = x_best-radius_search+radius_contain; xctr < x_best + radius_search - radius_contain; xctr++) {
         //cout<<xctr<<", "<<cum_col_scores[xctr]<<endl;
         if (cum_col_scores[xctr]>cum_col_score_best) {
             cum_col_score_best=cum_col_scores[xctr];
-            x_best2 = xctr;
+            x_best_left = xctr;
         }
     }
-    cout<<"optimal column, x_best = "<<x_best2<<endl;    
+    cout<<"optimal column, x_best_left = "<<x_best_left<<endl;    
     
     for (int var2 = y_best - radius_sample; var2 <= y_best + radius_sample; var2++)
         for (int var3 = x_best - radius_sample; var3 <= x_best + radius_sample; var3++) {
@@ -405,22 +434,22 @@ int main(int argc, char** argv) {
         }    
     
     // search for optimal column, given optimal row, in right image:
-    //int x_best_right = x_best2-radius_search;
+    //int x_best_right = x_best_left-radius_search;
     //repeat the search over columns, using y_best:
     cout<<"repeat x_best search for right image: "<<endl;
-   for (int xval = x_best2-radius_search; xval < x_best2 + 2*radius_search; xval++) {
+   for (int xval = x_best_left-radius_search; xval < x_best_left + 2*radius_search; xval++) {
         col_score = score_col_right(xval, y_best, radius_sample, delta_color_vec);
         //cout << "xval,  col score: " << xval << ", " << col_score << endl;
         col_scores[xval] = col_score;
     }
     //now compute cumulative scores over given radius
-    for (int xctr = x_best2-radius_search+radius_contain; xctr < x_best2 + 2*radius_search - radius_contain; xctr++) {
+    for (int xctr = x_best_left-radius_search+radius_contain; xctr < x_best_left + 2*radius_search - radius_contain; xctr++) {
         cum_col_scores[xctr]=0;
         for (int icol=xctr-radius_contain;icol<xctr+radius_contain;icol++) {
             cum_col_scores[xctr]+=col_scores[icol];
         }
     }
-    double x_best_right = x_best2-radius_search+radius_contain;
+    double x_best_right = x_best_left-radius_search+radius_contain;
     cum_col_score_best = cum_col_scores[x_best_right];
     //cout<<"xctr, cum score: "<<endl;
     for (int xctr = x_best_right-radius_search+radius_contain; xctr < x_best_right + 2*radius_search - radius_contain; xctr++) {
@@ -439,7 +468,9 @@ int main(int argc, char** argv) {
             image_display_right.at<cv::Vec3b>(var2, var3)[2] = 255;
         }        
     
-    
+    Eigen::Vector3d  xyz_vec;
+    xyz_vec = triangulate(y_best,x_best_left,x_best_right);
+    cout<<"triangulated x,y,z: "<<xyz_vec.transpose()<<endl;
     while (ros::ok()) {
         cv::imshow("lcam image 1", image_display);
         cv::imshow("rcam image 1", image_display_right);

@@ -51,6 +51,19 @@ shadow is:
    blue 56
    r/(g+1+b+1) = 0.75
 
+Davinci (physical) example projection matrix:
+projection
+2705.721674 0.000000 116.915465 17.786444
+0.000000 2705.721674 283.495354 0.000000
+0.000000 0.000000 1.000000 0.000000
+
+this would imply:
+  focal length, in pixels, = 2706
+  central pixel = (117,283)  (expected 240,320)
+  baseline = 17.786/2706 = 0.0066
+
+ball diam of 10mm shows up as 60 pixels in diam...but don't really know dist
+
 
 
 
