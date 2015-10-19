@@ -120,6 +120,7 @@ include_directories(
 add_executable(davinci_find_red_pixels src/davinci_find_red_pixels_centroid.cpp)
 add_executable(davinci_find_blue_pixels src/davinci_find_blue_pixels_centroid.cpp)
 add_executable(color_interp_v2 src/color_interp_v2.cpp)
+add_executable(color_interp_v3 src/color_interp_v3.cpp)
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(example_opencv_node example_opencv_generate_messages_cpp)
@@ -135,6 +136,7 @@ target_link_libraries(davinci_find_blue_pixels ${OpenCV_LIBRARIES}
  )
 
 target_link_libraries(color_interp_v2 ${OpenCV_LIBRARIES}   ${catkin_LIBRARIES})
+target_link_libraries(color_interp_v3 ${OpenCV_LIBRARIES}   ${catkin_LIBRARIES})
 #############
 ## Install ##
 #############
