@@ -1,0 +1,107 @@
+I measured the distance between camera and table at top position is about 700 mm. This is the shortest one if I want to take image of ball at three locations (see the incomplete ball images at the fourth location as attached files). 
+
+The pose of camera is not vertical to the table (it is the best I can do).
+
+Camera calibration data are attached for your reference.
+
+H->L goes down 150mm
+
+1, 2, 3 different spots
+
+l: left
+r:right
+
+r1_h: right image, first spot, top position 
+l2_L: left image, second spot, low position
+
+Analysis: 
+images 1_h (ball upper right)
+optimal column, x_best_right = 554
+optimal column, x_best_left = 486
+optimal row, y_best = 80
+disparity = 68
+
+images 2_h: (ball lower right)
+optimal column, x_best_right = 555
+optimal column, x_best_left = 486
+optimal row, y_best = 403
+disparity = 69
+
+images 3_h: (ball lower left)
+optimal column, x_best_right = 219
+optimal column, x_best_left = 144
+optimal row, y_best = 403
+disparity = 75
+
+dy: 403-80 = 323
+dx_left location 2 to 3: 486 - 144 = 342
+(ideally, these are equal)
+
+----------------------
+images 1_L:
+optimal column, x_best_right = 512
+optimal column, x_best_left = 455
+optimal row, y_best = 118
+disparity = 57
+
+images 2_L:
+optimal column, x_best_right = 510
+optimal column, x_best_left = 452
+optimal row, y_best = 386
+disparity = 58
+
+images 3_L:
+optimal column, x_best_right = 237
+optimal column, x_best_left = 176
+optimal row, y_best = 385
+disparity = 61
+
+dy: 386-118 = 268
+dx_left: 452-176 = 276
+(ideally, these are equal)
+
+---ratio dy_high/dy_low = 323/268 = 1.205
+50/40 = 1.25 (from approx ball diam)
+dx_high/dx_low = 342/276 = 1.24
+(call it 1.22?)
+
+du_h/f = dx_h/L
+du_l/f = dx_l/(L+0.150m)
+
+----yaml files----
+right focal length: 772
+left focal length: 776
+
+right central pixel: (266,266)
+left central pixel: (362,269)
+
+-----calibration----
+move dy = 2"; -->  dv_h = 323 pixels at L, dv_l = 268 pixels at dist L+150mm
+similar triangles:  
+  dv_h/f = 2"/L
+  dv_l/f = 2"/(L+0.150)
+
+e.g. if f = 774, then:
+   dv_h/f = 323/774; 
+     dv_h/f = 2"/L = 0.0508/L(m) --> f/L = dv_h/0.0508 = 323/0.0508 = 
+   dv_l/f = 268/774 = 0.346 = 0.0508/(L+0.15) --> 6358
+     f/(L+0.150) = dv_l/0.0508 = 268/0.0508 = 5276
+
+   -->  (L+0.150)/f - L/f = (1/5276) - (1/6358) = 0.00003226
+   --> f/0.150 = 30998 --> f = 4650 (???) (6x larger than f=776)
+
+---------try again--------
+ball diam at h / ball diam at L = 50/40
+
+at h, dv_h = 323 pixels;
+dv_h/f = 2"/L
+
+
+
+   
+
+
+
+
+
+

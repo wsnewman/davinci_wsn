@@ -16,7 +16,7 @@ using namespace std;
 int var1 = 1;
 Point pos;
 //search params for red ball
-int radius = 30; //30 covers fiducial
+int radius = 40;// use 50 for "h" scenes; use 40 for "L" scenes; 
 int radius_sample = radius;
 int radius_contain = radius*1.5;
 int radius_search = radius*3;
@@ -234,14 +234,14 @@ int main(int argc, char** argv) {
     ros::ServiceServer service = nh.advertiseService("snapshot_svc", snapshotService);
     //cv::namedWindow(OPENCV_WINDOW);
     char fname_left[64],fname_right[64],fname_code[8];
-    char left_prefix[]= "left_";
-    char right_prefix[] = "right_";
+    char left_prefix[]= "l"; //left_";
+    char right_prefix[] = "r";//"right_";
     char suffix[]=".png";
     //char *strcpy ( char *dest, const char *src );
     //strcpy(prefix,"left_"); //
     //strcpy(suffix,".png"); //char suffix = ".png";
     
-    cout<<"enter code number of file name (e.g. 01,02, 53, etc): ";
+    cout<<"enter code of file name (e.g. 1_h, 1_L, etc): ";
     cin>>fname_code;
     //char *strcpy ( char *dest, const char *src );
     strcpy(fname_left,left_prefix);
@@ -328,9 +328,18 @@ int main(int argc, char** argv) {
     blue = 0;
     red = 0;
     green = 0;
+    int ystart,yend,xstart,xend;
+    ystart = pos.y - radius_sample;
+    if (ystart<0) ystart=0;
+    yend = pos.y + radius_sample;
+    if (yend>HEIGHT-1) yend = HEIGHT-1;
+    xstart = pos.x - radius_sample;
+    if (xstart<0) xstart=0;
+    xend = pos.x + radius_sample;
+    if (xend>WIDTH-1) xend = WIDTH-1;
     //compute the color target over sample region about chosen pixel
-    for (int var2 = pos.y - radius_sample; var2 <= pos.y + radius_sample; var2++)
-        for (int var3 = pos.x - radius_sample; var3 <= pos.x + radius_sample; var3++) {
+    for (int var2 = ystart; var2 <= yend; var2++)
+        for (int var3 = xstart; var3 <= xend; var3++) {
             npixels++;
             blue += image.at<cv::Vec3b>(var2, var3)[0]; //row, col order = y,x
             green += image.at<cv::Vec3b>(var2, var3)[1];
@@ -380,22 +389,38 @@ int main(int argc, char** argv) {
     Eigen::VectorXd cum_col_scores= Eigen::MatrixXd::Zero(WIDTH-1,1);    
     // next entry is sum(0)
     double col_score;
+    xstart = pos.x-radius_search;
+    if (xstart<0) xstart=0;
+    xend = pos.x + radius_search;
+    if (xend>WIDTH-1) xend=WIDTH-1;
     //x val is column; score the color match for a range of columns
-    for (int xval = pos.x-radius_search; xval < pos.x + radius_search; xval++) {
+    for (int xval = xstart; xval < xend; xval++) {
         col_score = score_col(xval, pos.y, radius_sample, delta_color_vec);
         cout << "xval,  col score: " << xval << ", " << col_score << endl;
         col_scores[xval] = col_score;
     }
+    cout<<"line 402"<<endl;
     //now compute cumulative scores over given radius
-    for (int xctr = pos.x-radius_search+radius_contain; xctr < pos.x + radius_search - radius_contain; xctr++) {
+    xstart = pos.x-radius_search+radius_contain;
+    if (xstart<radius_contain) xstart=radius_contain;
+    xend = pos.x + radius_search - radius_contain;
+    if (xend> WIDTH-1-radius_contain) xend = WIDTH-1-radius_contain;
+    for (int xctr = xstart; xctr < xend; xctr++) {
         for (int icol=xctr-radius_contain;icol<xctr+radius_contain;icol++) {
             cum_col_scores[xctr]+=col_scores[icol];
         }
     }
+    cout<<"line 413"<<endl;
     int x_best = pos.x-radius_search+radius_contain;
+    if (x_best<0) x_best=0;
+    if (x_best>WIDTH-1) x_best = WIDTH-1;
     double cum_col_score_best = cum_col_scores[x_best];
     cout<<"xctr, cum score: "<<endl;
-    for (int xctr = pos.x-radius_search+radius_contain; xctr < pos.x + radius_search - radius_contain; xctr++) {
+    xstart = pos.x-radius_search+radius_contain;
+    if (xstart<0) xstart=0;
+    xend = pos.x + radius_search - radius_contain;
+    if (xend>WIDTH-1) xend=WIDTH-1;
+    for (int xctr = xstart; xctr < xend; xctr++) {
         cout<<xctr<<", "<<cum_col_scores[xctr]<<endl;
         if (cum_col_scores[xctr]>cum_col_score_best) {
             cum_col_score_best=cum_col_scores[xctr];
@@ -410,21 +435,42 @@ int main(int argc, char** argv) {
     // next entry is sum(0)
     double row_score;
     //y val is row; score the color match for a range of rows
-    for (int yval = pos.y-radius_search; yval < pos.y + radius_search; yval++) {
+    ystart = pos.y-radius_search;
+    if (ystart<0) ystart=0;
+    yend = pos.y + radius_search;
+    if (yend>HEIGHT-1) yend = HEIGHT-1;
+    
+    for (int yval = ystart; yval < yend; yval++) {
         row_score = score_row(x_best, yval, radius_sample, delta_color_vec);
-        cout << "yval,  row score: " << yval << ", " << row_score << endl;
-        row_scores[yval] = row_score;
+        if ((yval>-1) && (yval<HEIGHT)) {
+            cout << "yval,  row score: " << yval << ", " << row_score << endl;
+            row_scores[yval] = row_score;
+        }
     }
+    
+    ystart = pos.y-radius_search+radius_contain;
+    if (ystart<radius_contain) ystart=radius_contain;
+    yend = pos.y + radius_search - radius_contain;
+    if (yend>HEIGHT-1-radius_contain) yend = HEIGHT-1-radius_contain;
     //now compute cumulative scores over given radius
-    for (int yctr = pos.y-radius_search+radius_contain; yctr < pos.y + radius_search - radius_contain; yctr++) {
+    for (int yctr = ystart; yctr < yend; yctr++) {
         for (int irow=yctr-radius_contain;irow<yctr+radius_contain;irow++) {
             cum_row_scores[yctr]+=row_scores[irow];
         }
     }
     int y_best = pos.y-radius_search+radius_contain;
+    if (y_best<0) y_best=0;
+    if (y_best>HEIGHT-1) y_best = HEIGHT-1;
+    
     double cum_row_score_best = cum_row_scores[y_best];
     cout<<"yctr, cum score: "<<endl;
-    for (int yctr = pos.y-radius_search+radius_contain; yctr < pos.y + radius_search - radius_contain; yctr++) {
+    
+    ystart = pos.y-radius_search+radius_contain;
+    if (ystart<0) ystart=0;
+    yend = pos.y + radius_search - radius_contain;
+    if (yend>HEIGHT-1) yend = HEIGHT-1;
+    
+    for (int yctr = ystart; yctr < yend; yctr++) {
         cout<<yctr<<", "<<cum_row_scores[yctr]<<endl;
         if (cum_row_scores[yctr]>cum_row_score_best) {
             cum_row_score_best=cum_row_scores[yctr];
@@ -435,13 +481,23 @@ int main(int argc, char** argv) {
      cout<<"optimal column, x_best = "<<x_best<<endl;   
     //repeat the search over columns, using y_best:
     cout<<"repeat x_best search: "<<endl;
-   for (int xval = x_best-radius_search; xval < x_best + radius_search; xval++) {
+    xstart = x_best-radius_search;
+    if (xstart<0) xstart=0;
+    xend = x_best + radius_search;
+    if (xend>WIDTH-1) xend=WIDTH-1;
+   for (int xval = xstart; xval < xend; xval++) {
         col_score = score_col(xval, y_best, radius_sample, delta_color_vec);
         //cout << "xval,  col score: " << xval << ", " << col_score << endl;
         col_scores[xval] = col_score;
     }
+    cout<<"line 493"<<endl;
     //now compute cumulative scores over given radius
-    for (int xctr = x_best-radius_search+radius_contain; xctr < x_best + radius_search - radius_contain; xctr++) {
+    xstart = x_best-radius_search+radius_contain;
+    if (xstart<radius_contain) xstart=radius_contain;
+    xend = x_best + radius_search - radius_contain;
+    if (xend>WIDTH-1-radius_contain) xend = WIDTH-1-radius_contain;
+    
+    for (int xctr = xstart; xctr < xend; xctr++) {
         for (int icol=xctr-radius_contain;icol<xctr+radius_contain;icol++) {
             cum_col_scores[xctr]+=col_scores[icol];
         }
@@ -449,7 +505,11 @@ int main(int argc, char** argv) {
     double x_best_left = x_best-radius_search+radius_contain;
     cum_col_score_best = cum_col_scores[x_best_left];
     //cout<<"xctr, cum score: "<<endl;
-    for (int xctr = x_best-radius_search+radius_contain; xctr < x_best + radius_search - radius_contain; xctr++) {
+    xstart = x_best-radius_search+radius_contain;
+    if (xstart<0) xstart=0;
+    xend = x_best + radius_search - radius_contain;
+    if (xend>WIDTH-1) xend=WIDTH-1;
+    for (int xctr = xstart; xctr < xend; xctr++) {
         //cout<<xctr<<", "<<cum_col_scores[xctr]<<endl;
         if (cum_col_scores[xctr]>cum_col_score_best) {
             cum_col_score_best=cum_col_scores[xctr];
@@ -469,13 +529,23 @@ int main(int argc, char** argv) {
     //int x_best_right = x_best_left-radius_search;
     //repeat the search over columns, using y_best:
     cout<<"repeat x_best search for right image: "<<endl;
-   for (int xval = x_best_left-2*radius_search; xval < x_best_left + 2*radius_search; xval++) {
+    xstart = x_best_left-2*radius_search;
+    if (xstart<0) xstart=0;
+    xend = x_best_left + 2*radius_search;
+    if (xend>WIDTH-1) xend = WIDTH-1;
+    
+   for (int xval = xstart; xval < xend; xval++) {
         col_score = score_col_right(xval, y_best, radius_sample, delta_color_vec);
-        //cout << "xval,  col score: " << xval << ", " << col_score << endl;
+        cout << "xval,  col score: " << xval << ", " << col_score << endl;
         col_scores[xval] = col_score;
     }
     //now compute cumulative scores over given radius
-    for (int xctr = x_best_left-2*radius_search+radius_contain; xctr < x_best_left + 2*radius_search - radius_contain; xctr++) {
+    xstart = x_best_left-2*radius_search;
+    if (xstart<radius_contain) xstart=radius_contain;
+    xend = x_best_left + 2*radius_search;
+    if (xend>WIDTH-1-radius_contain) xend = WIDTH-1-radius_contain;
+    cout<<"start loop 515"<<endl;
+    for (int xctr = xstart; xctr < xend; xctr++) {
         cum_col_scores[xctr]=0;
         for (int icol=xctr-radius_contain;icol<xctr+radius_contain;icol++) {
             cum_col_scores[xctr]+=col_scores[icol];
@@ -484,7 +554,11 @@ int main(int argc, char** argv) {
     double x_best_right = x_best_left-radius_search+radius_contain;
     cum_col_score_best = cum_col_scores[x_best_right];
     //cout<<"xctr, cum score: "<<endl;
-    for (int xctr = x_best_right-2*radius_search+radius_contain; xctr < x_best_right + 2*radius_search - radius_contain; xctr++) {
+    xstart = x_best_right-2*radius_search+radius_contain;
+    if (xstart<0) xstart=0;
+    xend = x_best_right + 2*radius_search - radius_contain;
+    if (xend>WIDTH-1) xend = WIDTH-1;
+    for (int xctr = xstart; xctr < xend; xctr++) {
         //cout<<xctr<<", "<<cum_col_scores[xctr]<<endl;
         if (cum_col_scores[xctr]>cum_col_score_best) {
             cum_col_score_best=cum_col_scores[xctr];
@@ -492,6 +566,8 @@ int main(int argc, char** argv) {
         }
     }
     cout<<"optimal column, x_best_right = "<<x_best_right<<endl;    
+    cout<<"optimal column, x_best_left = "<<x_best_left<<endl; 
+    cout<<"optimal row, y_best = "<<y_best<<endl;
     
     for (int var2 = y_best - radius_sample; var2 <= y_best + radius_sample; var2++)
         for (int var3 = x_best_right - radius_sample; var3 <= x_best_right + radius_sample; var3++) {
