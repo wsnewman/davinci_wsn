@@ -1,0 +1,17 @@
+automate color search...
+
+set threshold for orange/not-orange;
+  compute centroid
+  
+grow square until avg color decreases?  
+  then go a bit larger?  
+  
+  largest square in circle-->square diag = circle diam, 
+  grow to circle contained in square--> circle diam = square side
+  
+  so, as grow square, find max square size, then increase by factor sqrt(2) 
+  
+  nom color: red ~ 137;
+             green ~ 62
+             blue ~ 46
+             
