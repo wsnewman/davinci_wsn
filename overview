@@ -1,0 +1,74 @@
+Davinci summary:
+
+roslaunch dvrk_model wsn_davinci_gazebo.launch
+
+rosrun davinci_traj_streamer davinci_traj_interpolator_as
+
+rosrun rviz rviz
+
+cd ros_ws/src/davinci_wsn/davinci_playfiles
+
+PLAYFILE READER, JOINT SPACE (.jsp file, editable)
+rosrun playfile_reader playfile_jointspace testfile2.jsp
+
+joint-space playfiles have format: 
+arm1, 7 jnts (last jnt is gripper opening angle);
+arm2, 7 jnts
+arrival time
+
+rosrun playfile_reader playfile_cartspace retract.csp
+from same dir, 
+rosrun playfile_reader playfile_cartspace hand_off_peg.csp
+
+THESE USE text "playfiles" in joint space. (csp for cartesian-space)
+does IK to get joint-space goals, then interpolates in joint space;
+file format: 
+arm1: Ox,Oy,Oz, x_vec, z_vec, gripper opening
+arm2: Ox,Oy,Oz, x_vec, z_vec, gripper opening
+arrival time
+
+
+Cartesian moves, w/rt left-camera optical frame:
+
+rosrun cart_move_as cart_move_as  (in addition to joint-space server); 
+  leave this server running
+
+example client:
+rosrun cart_move_as cart_move_client_example
+
+see action message in: /cwru_msgs/cwru_action/action/cart_move.action
+includes two gripper poses, two jaw angles, one arrival time;
+better--extend this to vectors of the above
+
+davinci_kinematics:
+  fwd and inverse kinematics; publisher to joints, including mimic joints
+  uses custom IK
+  see davinci_kinematics.h and *.cpp for LOTS of comments
+  used in cartesian moves
+  
+davinci_opencv: start on some image processing; still trying to get calibration
+
+davinci_playfiles: text files, jsp and csp
+
+davinci_traj_streamer:  includes action server to accept joint-space trajectories,
+  interpolate them, and send streamed commands to (all) gazebo joints
+  
+  
+Davinci_vision: contains red-ball snapshots; attempting calibration
+
+dvrk_model:  wsn gazebo extension, plus stereo cameras
+
+playfile_reader: parses jsp or csp files and sends commands to action servers
+
+wsn_move_davinci_rviz: obsolete--no Gazebo
+  
+camera_calibration:  moves virtual checkerboard under cameras to get
+  stereo camera calibration;  
+
+(trying to get real camera calibration)
+
+
+
+
+
+
