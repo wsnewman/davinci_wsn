@@ -73,7 +73,7 @@ geometry_msgs::Pose transformEigenAffine3fToPose(Eigen::Affine3f e) {
 
 Eigen::Affine3d transformPoseToEigenAffine3d(geometry_msgs::Pose pose) {
   Eigen::Affine3d affine;
-  // NEED TO FILL IN THIS FNC!!
+
     Eigen::Vector3d Oe;
 
     Oe(0)= pose.position.x;
@@ -169,6 +169,40 @@ js_action_client_("trajActionServer", true)
 
 
     ROS_INFO("connected to joint-space interpolator action server"); // if here, then we connected to the server;
+ 
+    // add these 11/12/15
+    ROS_INFO("getting transforms from camera to PSMs");
+    tf::TransformListener tfListener;
+    tf::StampedTransform tfResult_one,tfResult_two;    
+    Eigen::Affine3d affine_lcamera_to_psm_one,affine_lcamera_to_psm_two,affine_gripper_wrt_base;
+   bool tferr=true;
+    ROS_INFO("waiting for tf between base and right_hand...");
+    while (tferr) {
+        tferr=false;
+        try {
+            //The direction of the transform returned will be from the target_frame to the source_frame. 
+             //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
+                tfListener.lookupTransform("left_camera_optical_frame","one_psm_base_link",  ros::Time(0), tfResult_one);
+                tfListener.lookupTransform("left_camera_optical_frame","two_psm_base_link",  ros::Time(0), tfResult_two);
+            } catch(tf::TransformException &exception) {
+                ROS_ERROR("%s", exception.what());
+                tferr=true;
+                ros::Duration(0.5).sleep(); // sleep for half a second
+                ros::spinOnce();                
+            }   
+    }
+    ROS_INFO("tf is good");
+    //affine_lcamera_to_psm_one is the position/orientation of psm1 base frame w/rt left camera link frame
+    // need to extend this to camera optical frame
+    affine_lcamera_to_psm_one_ = transformTFToEigen(tfResult_one);
+    affine_lcamera_to_psm_two_ = transformTFToEigen(tfResult_two); 
+    ROS_INFO("transform from left camera to psm one:");
+    cout<<affine_lcamera_to_psm_one_.linear()<<endl;
+    cout<<affine_lcamera_to_psm_one_.translation().transpose()<<endl;
+    ROS_INFO("transform from left camera to psm two:");
+    cout<<affine_lcamera_to_psm_two_.linear()<<endl;
+    cout<<affine_lcamera_to_psm_two_.translation().transpose()<<endl; 
+
 }
 
 void CartMoveActionServer::executeCB(const actionlib::SimpleActionServer<cwru_action::cart_moveAction>::GoalConstPtr& goal) {
@@ -320,7 +354,7 @@ void doneCb(const actionlib::SimpleClientGoalState& state,
 
 
 int main(int argc, char** argv) {
-    ros::init(argc, argv, "playfile_jointspace"); //node name
+    ros::init(argc, argv, "cart_move_as"); //node name
     ros::NodeHandle nh; // create a node handle; need to pass this to the class constructor
 
     Eigen::Affine3d init_gripper_affine1,init_gripper_affine2;

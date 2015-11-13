@@ -61,27 +61,68 @@ demonstrated could knock can off block using arms, but self collision checking i
 Also, gripper not able to hold objects.
 
 Extensions to manipulation:
+
 start gazebo: 
+
 `roslaunch dvrk_model wsn_davinci_gazebo.launch`
+
 start trajectory server:
+
 `rosrun davinci_traj_streamer davinci_traj_interpolator_as`
+
 move robot to retracted pose w/ grippers open (from /ros_ws/src/davinci_wsn/davinci_playfiles):
+
 `rosrun playfile_reader playfile_cartspace retract.csp`
+
 insert peg into gazebo: insert model 1mm_peg (stored in .gazebo).  See 1mm_bar.tar.gz, and store this in .gazebo dir.
 
+reduce gravity.  From gazebo, "world" tab, "physics" item, select "gravity" and set gravity components to 0.  This will reduce the "gravity droop" of the motor controllers.
+
 Move peg to place it between open fingers:
-`rosrun move_gazebo_model move_gazebo_model`
- (see source code in cwru_baxter/move_gazebo_model/src/move_gazebo_model2.cpp
+
+`rosrun move_gazebo_model move_1mm_bar`
+
+ (see source code in cwru_baxter/move_gazebo_model/src/move_gazebo_model2.cpp).  This will prompt for the model name (enter 1mm_bar)
+ 
+ At zero gravity, this program can be killed and the peg will remain between the gripper fingers.
 
 Close the gripper (still from playfiles dir):
+
 `rosrun playfile_reader playfile_cartspace retracted_close_grippers.csp`
 
-Kill the move_gazebo routine--gripper should hold peg stably.
+* Peg hand-off in camera space:  note that in camera space, x is left/right and y is front/back
 
-Run routine to hand off peg from right gripper to left gripper:
-`rosrun playfile_reader playfile_cartspace hand_off_peg.csp`
+From the directory davinci_playfiles, run the routine:
 
-note: gazebo model was tweaked to move cameras further forward to avoid singularities.
+`rosrun playfile_reader playfile_cameraspace cameraspace_peg_handoff_prepose.csp`
+
+start up rviz:
+
+`rosrun rviz rviz`
+
+and move the view to zoom on the grippers from the viewpoint of camera: davinci/left_camera/image_raw
+
+This will pre-pose the grippers, facing each other, with the "right" (from DaVinci perspective) gripper open.
+(This appears as the "left" gripper from the camera view, similar to the teleoperation view)
+
+Reduce the simulated gravity to a small value (e.g. gz = -0.1)
+
+Pre-position the "needle" between the right-arm gripper jaws by running:
+
+`rosrun move_gazebo_model move_1mm_bar_camera_init`
+
+Close the gripper jaws to grab the needle by running (from the davinci_playfiles directory):
+
+`rosrun playfile_reader playfile_cameraspace cameraspace_peg_handoff_prepose_grab.csp`
+
+Kill the needle positioner node, move_1mm_bar_camera_init.  The needle should be grasped by the gripper.
+
+Then run:
+
+`rosrun playfile_reader playfile_cameraspace cameraspace_peg_handoff.csp`
+
+The needle will be handed off to the opposite gripper.
+
 
 
 

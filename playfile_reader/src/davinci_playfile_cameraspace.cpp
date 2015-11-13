@@ -6,7 +6,7 @@
 
 //files must be designed to account for relative positions of PSM1 and PSM2 base frames w/rt world
 
-//the following are w/rt to frame ONE_PSM_BASE_LINK
+//the following are w/rt to left camera optical frame
 //entries 0-2 = origin of PSM1 gripper tip (a point mid-way between the gripper jaw tips)
 //entries 3-5 = x-axis direction for PSM1 gripper-tip frame (x-axis points parallel to gripper-jaw rotation axis; y-axis points from fingertip to fingertip)
 //entries 6-8 = z-axis direction for PSM1 gripper-tip frame (z-axis points from wrist to tip)

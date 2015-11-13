@@ -15,6 +15,8 @@ Another possible extension is to accept multiple (a vector of) Cartesian goal po
 The cart_move_client_example has a pair of hard-coded gripper poses, which are sent to the cart_move_as action server.
 This example may be extended to invoke motions using computed poses (e.g. vision guided)
 
+Anticipate having a service accept changes to the transforms from camera frame to manipulator base frames.
+
 ## Example usage
 Start up:
 `roslaunch dvrk_model wsn_davinci_gazebo.launch`

@@ -1,5 +1,5 @@
 // cart_move_client_example: 
-// wsn, Sept, 2015...example for test/demoof cart_move_as action server
+// wsn, Sept, 2015...example for test/debug cart_move_as action server
 
 #include<ros/ros.h>
 #include <actionlib/client/simple_action_client.h>
@@ -79,7 +79,7 @@ int main(int argc, char** argv) {
 
         // hard-code desired gripper poses
         // gripper 1 is DaVinci's right arm (from robot's viewpoint)
-        tip_origin1<<0,0,0.14;
+        tip_origin1<<0,0,0.15;
 	z_vec1<<1,0,0;
 	x_vec1<<0,0,-1;
 	y_vec1 = z_vec1.cross(x_vec1);
@@ -91,7 +91,7 @@ int main(int argc, char** argv) {
 	gripper1_jaw_angle=0.3;
 
         // and specify the "left" gripper pose:
-	tip_origin2<<0,0,0.12;
+	tip_origin2<<0,0,0.155;
 	z_vec2<<-1,0,0;
 	x_vec2<<0,0,-1;
 	y_vec2 = z_vec2.cross(x_vec2);
