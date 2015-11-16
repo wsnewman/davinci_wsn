@@ -272,7 +272,6 @@ int main(int argc, char** argv) {
     while (tferr) {
         tferr=false;
         try {
-                //try to lookup transform from target frame "odom" to source frame "map"
             //The direction of the transform returned will be from the target_frame to the source_frame. 
              //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
                 tfListener.lookupTransform("left_camera_optical_frame","one_psm_base_link",  ros::Time(0), tfResult_one);

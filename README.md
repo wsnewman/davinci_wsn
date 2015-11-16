@@ -74,9 +74,9 @@ move robot to retracted pose w/ grippers open (from /ros_ws/src/davinci_wsn/davi
 
 `rosrun playfile_reader playfile_cartspace retract.csp`
 
-insert peg into gazebo: insert model 1mm_peg (stored in .gazebo).  See 1mm_bar.tar.gz, and store this in .gazebo dir.
+The world model includes a 1mm-thickness peg.  If desired, this peg model can be inserted manually via Gazebo.  To do so, from the "Insert" tab, choose model 1mm_peg (stored in .gazebo).  This model needs to be stored in the /home/.gazebo directory.  If not present, see the 1mm_bar.tar.gz file in this repo, and store this in your .gazebo dir.
 
-reduce gravity.  From gazebo, "world" tab, "physics" item, select "gravity" and set gravity components to 0.  This will reduce the "gravity droop" of the motor controllers.
+reduce gravity:  From gazebo, "world" tab, "physics" item, select "gravity" and set gravity components to 0.  This will reduce the "gravity droop" of the motor controllers.
 
 Move peg to place it between open fingers:
 
