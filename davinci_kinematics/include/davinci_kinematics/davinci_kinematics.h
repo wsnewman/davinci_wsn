@@ -111,22 +111,6 @@ typedef Eigen::Matrix<double, 7, 1> Vectorq7x1;
  //                     one_tool_wrist_sca_shaft_link-->: z-axis thru gripper jaw rot axis
  //                       one_tool_tip_link
 
-//frames:  base has x-axis forward, z up, origin at mount plate;
-// sequentially, from torso to tip, frames are:
-//right_upper_shoulder has z-axis through S0, x-axis at 45-deg (parallel to home pose of outstretched right arm)
-//right_lower_shoulder has z-axis through S1, x-axis points forward along humerus axis (outstretched in home pose)
-//  origin is "shoulder point"
-//right_upper_elbow: z-axis through humerus rotation (E0), and x-axis points DOWN (in home pose);
-// origin is offset along (self) z-axis relative to parent frame
-//right_lower_elbow: origin at "elbow point" w/ z-axis along elbow bend (E1), w/ x-axis FORWARD (at home)
-//right_upper_forearm: origin offset from above (along self z); z-axis along forearm rot (W0)
-// right lower_forearm: has origin at "wrist point"; z-axis through wrist bend (W1)
-//right_wrist: z-axis points OUT from tool flange--but orgin is offset (btwn wrist pt and flange face); W2 axis
-//right_hand: origin on flange face, z-axis points out; x-axis is DOWN (at home)
-
-// at "home" angles (all zeros, w/rt Baxter commands), arms are outstretched w/ first shoulder jnt (S0)
-// such that arms are at 45deg from forward (making a 90-deg angle w/rt each other)
-// and elbow offsets are BELOW humerus axes
 
 
 

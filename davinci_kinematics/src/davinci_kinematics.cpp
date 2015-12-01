@@ -313,6 +313,7 @@ Eigen::Vector3d Davinci_IK_solver::q123_from_wrist(Eigen::Vector3d wrist_pt) {
 //defined tool-tip frame such that x-axis is anti-parallel to the gripper-jaw rotation axis
 // "5" frame is frame w/ z-axis through the last rotation joint--rotation of gripper jaws
 // return the wrist point...but also calculate zvec_4
+//  zvec_4 has a +/- ambiguity
 
 Eigen::Vector3d Davinci_IK_solver::compute_w_from_tip(Eigen::Affine3d affine_gripper_tip, Eigen::Vector3d &zvec_4) {
   // the following are all expressed w/rt the 0 frame
@@ -325,6 +326,23 @@ Eigen::Vector3d Davinci_IK_solver::compute_w_from_tip(Eigen::Affine3d affine_gri
   origin_5 = affine_gripper_tip.translation() - gripper_jaw_length*zvec_tip_frame;
   //cout<<"O5: "<<origin_5.transpose()<<endl;
   Eigen::Vector3d z_perp, z_parallel;
+  // consider these two planes: 
+  // define vector z_perp, which is the same a z5
+  // P_perp contains O5 and is perpendicular to z5; claim: P_perp contains 04
+  // P_parallel is defined by: contains O_0, contains O_5 and contains z5; claim: P_parallel contains O4
+  // given P_parallel, can compute the normal vector to this plane--call it z_parallel
+  //
+  //  note that plane P_parallel is perpendicular to P_perp; (z_perp is perpendicular to z_parallel)
+  //  if both planes contain O4, then O4 lies along the line of intersection of P_perp with P_parallel
+  //  this line must be perpendicular to z_perp and to z_parallel, and thus it is +/- z_parallel cross z_perp
+  // call this intersect_vec;
+  //  intersect_vec is the same as +/- x5: the vector from z4 to z5 (in DH notation); sign is ambiguous at this point
+  //  O4 can be found by starting from O5, moving distance "dist_from_wrist_bend_axis_to_gripper_jaw_rot_axis" along x5
+  //  to resolve the sign ambiguity, consider two O4 candidates: O4a = O5-dist*intersect_vec, 
+  //  and O4b = O5+dist*intersect_vec
+  //  the correct solution is the point that is CLOSEST to the origin O_0
+  
+  
   // plane P_perp is perpendicular to z_perp and contains O5
   // plane P_parallel is perpendicular to z_parallel and contains O5, base origin, and z_perp
   z_perp = zvec_5; //used to define a plane perpendicular to jaw-rotation axis
@@ -341,9 +359,16 @@ Eigen::Vector3d Davinci_IK_solver::compute_w_from_tip(Eigen::Affine3d affine_gri
   origin_4 = origin_4a;
   if (origin_4b.norm()<origin_4a.norm()) {
         origin_4 = origin_4b;
+        //FIX THIS?
+        xvec_5 = -xvec_5; //default solution was incorrect, so negate x5 direction
+        // but we don't return xvec5 anyway, so no issue?
   }
+  
+  // possible error here: need to get sign of xvec_5 correct.
+  // given O_4 and O_5, should have xvec_5 point from O_4 towards O_5
   //cout<<"origin_4: "<<origin_4.transpose()<<endl;
-  zvec_4 = zvec_5.cross(xvec_5);
+  // if use CORRECT direction of x5 axis and z5 axis, does CORRECT direction of zvec_4 follow?
+  zvec_4 = zvec_5.cross(xvec_5); //ambiguity here: zvec_4 could be +/- along this direction
   //cout<<"zvec_4: "<<zvec_4.transpose()<<endl;
   return origin_4;
 }
@@ -420,8 +445,12 @@ int Davinci_IK_solver::ik_solve(Eigen::Affine3d const& desired_hand_pose) // sol
    //use this to express z_vec4 in frame-3 coords.  Expect z-component to be zero
    z4_wrt_3 = R_3_wrt_base.transpose()*z_vec4;
    //cout<<"z4 w/rt frame 3: "<<z4_wrt_3.transpose()<<endl;
+   // FIX THIS: given ambiguity of +/- z_vec4, there are 2 solns here, PI apart
    double theta4 = atan2(z4_wrt_3(1),z4_wrt_3(0))+M_PI/2.0;
    //ROS_INFO("theta4 = %f",theta4);
+   
+   // for the following, it might be easier to use knowledge of O4 and O5 to compute theta5
+   // also, given x5_vec, and z6_vec_desired, should be able to get theta6
    
    //recompute FK for 1st 4 variables:
    theta_vec(3) = theta4;   
