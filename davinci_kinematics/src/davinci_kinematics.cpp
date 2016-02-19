@@ -368,7 +368,8 @@ Eigen::Vector3d Davinci_IK_solver::compute_w_from_tip(Eigen::Affine3d affine_gri
   // given O_4 and O_5, should have xvec_5 point from O_4 towards O_5
   //cout<<"origin_4: "<<origin_4.transpose()<<endl;
   // if use CORRECT direction of x5 axis and z5 axis, does CORRECT direction of zvec_4 follow?
-  zvec_4 = zvec_5.cross(xvec_5); //ambiguity here: zvec_4 could be +/- along this direction
+  zvec_4 = -(zvec_5.cross(xvec_5)); //ambiguity here: zvec_4 could be +/- along this direction
+  //erdem IK code issue 2: correct cross product sign
   //cout<<"zvec_4: "<<zvec_4.transpose()<<endl;
   return origin_4;
 }
