@@ -162,7 +162,7 @@ Eigen::Affine3d Davinci_fwd_solver::computeAffineOfDH(double a, double d, double
     R(1, 0) = sq;
     R(1, 1) = cq*ca; //%cos(q(i))*cos(alpha);
     R(1, 2) = -cq*sa; //%	
-    R(3,1) = 0; //% erdem IK change 1: initialize 0 values in R matrix explicitly otherwise causes numerical issues
+    R(3,1) = 0; //% erdem IK bug #1: initialize 0 values in R matrix explicitly otherwise causes numerical issues
     R(2, 1) = sa;
     R(2, 2) = ca;
     affine_DH.linear() = R;
@@ -369,7 +369,7 @@ Eigen::Vector3d Davinci_IK_solver::compute_w_from_tip(Eigen::Affine3d affine_gri
   //cout<<"origin_4: "<<origin_4.transpose()<<endl;
   // if use CORRECT direction of x5 axis and z5 axis, does CORRECT direction of zvec_4 follow?
   zvec_4 = -(zvec_5.cross(xvec_5)); //ambiguity here: zvec_4 could be +/- along this direction
-  //erdem IK code issue 2: correct cross product sign
+  //erdem IK bug # 2: correct cross product sign
   //cout<<"zvec_4: "<<zvec_4.transpose()<<endl;
   return origin_4;
 }
@@ -488,7 +488,7 @@ int Davinci_IK_solver::ik_solve(Eigen::Affine3d const& desired_hand_pose) // sol
    
    // pack the solution in to a single vector
    q_vec_soln_ =  convert_DH_vecs_to_qvec(theta_vec, d_vec);
-           
+   fit_joints_to_range(q_vec_soln_); // erdem IK bug #3: check and correct angle periodicity.        
    //cout<<"soln: "<<q_vec_soln_.transpose()<<endl;
    //cout<<"origin: ";
    //cout<<affine_frame_wrt_base.translation().transpose()<<endl;  
