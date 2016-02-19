@@ -162,7 +162,7 @@ Eigen::Affine3d Davinci_fwd_solver::computeAffineOfDH(double a, double d, double
     R(1, 0) = sq;
     R(1, 1) = cq*ca; //%cos(q(i))*cos(alpha);
     R(1, 2) = -cq*sa; //%	
-    //%R(3,1)= 0; %already done by default
+    R(3,1) = 0; //% erdem IK change 1: initialize 0 values in R matrix explicitly otherwise causes numerical issues
     R(2, 1) = sa;
     R(2, 2) = ca;
     affine_DH.linear() = R;
