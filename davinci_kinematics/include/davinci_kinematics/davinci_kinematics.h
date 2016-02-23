@@ -154,7 +154,7 @@ const double insertion_offset=0.0156; //must command this much displacement to g
 
 const double DH_q_offset0 = 0.0;
 const double DH_q_offset1 = M_PI/2.0;
-const double DH_q_offset2 = insertion_offset; // erdem IK bug #4: parameter value should be positive
+const double DH_q_offset2 = -insertion_offset; // erdem IK bug #4: parameter value should be positive
 const double DH_q_offset3 = M_PI;
 const double DH_q_offset4 = M_PI/2;
 const double DH_q_offset5 = M_PI/2; //M_PI;
