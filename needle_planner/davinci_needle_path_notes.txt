@@ -1,0 +1,133 @@
+PLAN FOR NEEDLE-DRIVE KINEMATICS:
+wsn, 2/23/16
+
+define the following frames:
+
+GRIPPER FRAME: at present, the davinci gripper frame has its origin at the tip (of the chosen gripper, 1 or 2).
+The gripper z-axis extends outward: from the wrist and through the gripper tip.
+Define a "thumb" and a "forefinger", such that the gripper y-axis points from the thumb tip to the
+forefinger tip.  (This matters because there are two different options for what appears to be the same
+gripper pose, but if the two jaws were different colors, it would be obvious).
+
+The gripper-frame x-axis (which is parallel to the rotational axis of thegripper jaws) follows from cross product of y into z (or tvec into bvec).
+
+GRIPPER GRASP FRAME: The gripper grasp frame is a frame on the corresponding to
+where the gripper touches the needle.  The contact points will be between the wrist point and
+gripper tip--e.g., half-way.  The origin of this frame is at:
+O_grsp/gripper = (0,0,-grip_depth), where grip_depth is the distance of the contact points from
+the gripper tips.  Define the orientation of this frame to be parallel to the gripper frame.
+The transform (grasp frame with respect to gripper frame) is thus:
+T_grsp/gripper: R = identity; O_grsp/gripper = (0,0,-grip_depth)
+
+NEEDLE FRAME: 
+The needle, with radius "r", is a semicircle in a plane.
+The needle-frame origin is the center of the circle that contains the needle.
+The z-axis of the needle frame is perpendicular to plane of needle.
+The positive direction of the z axis is defined consistent with a positive rotation of the
+needle frame about its z axis corresponding to the correct direction for needle driving.
+(i.e., the tip is leading and the tail follows).
+The needle-frame x-axis points from the needle-frame origin to needle tip. 
+  i.e., in the needle frame, the tip coordinates are (r,0,0) (constant values)
+
+
+TISSUE FRAME:
+Define the tissue-frame origin at the desired needle entrance pt.
+Define an x-axis on the tissue surface, pointing from the entrance point towards the exit point.
+The tissue-frame z-axis is the tissue surface normal (positive points away from the tissue).
+The tissue-frame y-axis follows from the cross product, bvec into nvec (or zvec into xvec).
+
+TISSUE-FRAME TRANSFORM:  T_tissue/lcam_opt_frame
+The tissue frame can be expressed as a transform with respect to the left-camera optical frame.
+This should be based on point-cloud selections.
+The centroid of a selected patch on the tissue will define an entrance point, with coordinates 
+expressed in the (left) camera (optical) frame.
+Additionally, selection of point-cloud points on the tissue surface yields a surface normal vector,
+expressed in the camera frame, i.e.: bvec_tissue/lcam_opt_frame.
+The x-axis of the tissue frame (nvec_tissue) is defined as a vector from the entrance point to the exit point.
+
+The exit point can be selected from the point cloud, or it can be computed, subject to constraints.
+
+The y-axis of the tissue frame (t_tissue) follows from the cross product of tvec into bvec.
+
+Full specification of nvec, tvec, bvec and origin of the tissue frame in camera coordinates is equivalent
+to defining the transform T_tissue/lcam_opt_frame.
+
+GRASP TRANSFORM:  T_needle/grasp
+define a needle-grasp transform that relates the "grasp" frame on the gripper (needle/gripper contact
+point) to the needle frame.  This transform should be static during needle driving.
+A common example of this transform would be:
+
+*needle z-axis parallel (or antiparallel) to gripper z axis 
+*needle origin with respect to grasp frame = (0, +/-r, 0) = O_needle/grasp
+  +/-r depends on whether gripper "thumb" or "forefinger" is "up" w/rt tissue frame
+
+*must choose direction of needle x-axis (vector from grasp frame to needle tip), which
+  depends on grasp along needle circumference (e.g. how close to the tip or, more likely
+  how close to the suture end of the needle).  For bvec_needle/grasp = (0,0,1) (i.e., 
+  needle z-axis parallel to gripper z-axis), the needle-frame x-axis (or nvec_needle) will
+  lie in the grasp-frame x-y plane.
+  
+  For illustration, consider grabbing the needle with bvec_needle || bvec_gripper. This
+  implies that the plane of the needle is perpendicular to the gripper z axis (our typical
+  needle-grasp pose, although an option is for bvec_needle || -bvec_gripper).
+  
+  Thumb "up" vs thumb "down" is also an optional choice.  E.g., consider the common case that
+  the tissue is horizontal, the gripper is above the tissue, the gripper z-axis (bvec_gripper)
+  is parallel to the tissue (i.e., the gripper is also horizontal), and the "thumb" is above
+  the "forefinger."  In this case the gripper y-axis, bvec_gripper, points "down" towards the tissue
+  (antiparallel to the tissue normal vector).  The needle-frame origin is then at:
+  O_needle/grasp = (0,r,0), and the needle tip is "below" the grasp origin (at positive value of
+  y with respect to grasp frame).
+  
+  For illustration, if the needle is grasped mid-way (not recommended, but easily 
+  visualized), tip and tail are then equidistant from the grasp-frame origin.
+  In this case, the needle tip is at: tip/grasp = (r,r,0).
+  
+  For some other grasp on the needle (e.g., closer to the suture end), there
+  will be a different static transform from the grasp frame to needle frame.  Commonly, though,
+  vec_needle = +/-bvec_gripper and O_needle/grasp = (0,+/-r,0), but there is still one parameter
+  to be defined to describe where on the needle it is being grasped.  This additional parameter
+  will complete the static transform T_needle/grasp, which should be static while needle driving.
+  
+  
+  
+NEEDLE PATH:
+The needle-frame z axis will be chosen to be parallel to the tissue and elevated above the
+tissue by some distance  0 < needle_axis_offset < r. The needle-frame z-axis (bvec_needle)
+will be ANTI-parallel to tissue-frame y-axis: bvec_needle = -tvec_tissue.
+Needle driving will be a positive rotation about the needle z axis.
+
+Start from needle x-axis (nvec_needle) anti-parallel to tissue-frame x-axis, i.e.:
+nvec_needle = - nvec_tissue.
+
+Decide how far to drive the needel (phi of needle rotation from start pose).
+e.g., drive until the needle-frame x-axis is parallel to tissue-frame x-axis, i.e. 180-deg rot;
+This may be optimal, as it would give gripper2 as much grasp opportunity (near the needle tip)
+as gripper1 (which is grasping near the needle tail).
+
+By default, drive as above, about the bvec_needle axis, 180-deg from the start pose, where the
+initial pose of the needle frame has nvec_needle parallel to the tissue surface.
+
+The origin of the needle frame will be above a point equidistant between the tissue entrance and
+exit points.  Define d_mid = 1/2 (p_exit - p_entrance) (half the distance from entrance to exit point).
+The needle origin for this case, with respect to the tissue frame, is: 
+O_needle/tissue = (x_mid,0, needle_axis_offset).
+The initial needle-frame orientation is:
+orientation: nvec_needle/tissue = (-1,0,0)
+             tvec_ = (0,0,1)
+             bvec_needle/tissue = (0, -1, 0)
+       == R0_needle/tissue
+             
+As the needle is driven, O_needle/tissue remains constant, but orientation rotates about the
+needle z-axis, which is the tissue-frame -y axis.  If the needle frame is rotated by angle phi-->
+R(phi)_needle/tissue = Roty(phi)*R0_needle/tissue.
+The above equations define the transform T_needle/tissue.
+
+COMPUTING DESIRED GRIPPER FRAME:
+Given the desired needle pose with respect to the tissue, T_needle/tissue (which is a function of 
+insertion angle, phi), use inverse of T_needle/gripper to get T_gripper/tissue;
+then use T_tissue/lcam_opt_frame to get T_gripper/lcam_opt_frame.
+Then use inv(T_psm1/lcam_opt_frame) or T_psm2/lcam_opt_frame to get T_gripper1/psm1 or T_gripper2/psm2
+(for choice of PSM 1 or 2).  Use existing IK routines to solve for corresponding joint displacements.
+
+
