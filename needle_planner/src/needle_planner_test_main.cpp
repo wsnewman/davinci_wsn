@@ -15,7 +15,7 @@ int main(int argc, char** argv)
     Eigen::Vector3d entrance_pt,exit_pt,tissue_normal;
     tissue_normal<<0,0,-1; //antiparallel to optical axis
     entrance_pt<<0,0,0.1; //100mm directly under camera; should be OK
-    exit_pt<<0,0.01,0.1; // exit pt is along camera-frame +y axis relative to entrance pt
+    exit_pt<<0.01,0.0,0.1; // exit pt is along camera-frame +y axis relative to entrance pt
     vector <Eigen::Affine3d> gripper_affines_wrt_camera;  //put answers here  
 
     ROS_INFO("main: instantiating an object of type NeedlePlanner");
@@ -29,6 +29,7 @@ int main(int argc, char** argv)
         cout<<gripper_affines_wrt_camera[i].linear()<<endl;
         cout<<"origin: "<<gripper_affines_wrt_camera[i].translation().transpose()<<endl;
     }
-    ROS_WARN("I am broken; fix me!");
+    needlePlanner.write_needle_drive_affines_to_file(gripper_affines_wrt_camera);
+    
     return 0;
 } 
