@@ -162,17 +162,15 @@ NeedlePlanner::NeedlePlanner() {
     affine_needle_frame_wrt_tissue_ = affine_init_needle_frame_wrt_tissue_;      
 };
 
-//main fnc: must specify entrance_pt as vector w/rt camera frame
+//function to compute affine_tissue_frame_wrt_camera_frame_
+//must specify entrance_pt as vector w/rt camera frame
 // must specify tissue normal vector, also in camera frame
 // also provide approximate exit point on tissue, in camera frame
 // Exit point will get "repaired" to be consistent distance from entrance point, 
 // consistent w/ needle radius and height of needle z-axis above tissue
 // tissue-frame x-axis will be inferred as vector from entrance point to "repaired" exit pt 
-// Return a vector full of affines describing desired gripper frames w/rt camera frame
-void NeedlePlanner::compute_needle_drive_gripper_affines(Eigen::Vector3d entrance_pt,
-        Eigen::Vector3d exit_pt, Eigen::Vector3d tissue_normal, 
-        vector <Eigen::Affine3d> &gripper_affines_wrt_camera) {
-    
+void NeedlePlanner::compute_tissue_frame_wrt_camera(Eigen::Vector3d entrance_pt,
+        Eigen::Vector3d exit_pt, Eigen::Vector3d tissue_normal)  {
     //set up tissue frame w/rt camera
     bvec_tissue_frame_wrt_camera_ = tissue_normal;
     nvec_tissue_frame_wrt_camera_ = (exit_pt - entrance_pt);
@@ -190,10 +188,21 @@ void NeedlePlanner::compute_needle_drive_gripper_affines(Eigen::Vector3d entranc
     affine_tissue_frame_wrt_camera_frame_.linear() = R_tissue_frame_wrt_camera_frame_;
     affine_tissue_frame_wrt_camera_frame_.translation() = entrance_pt;
     cout<<"FIXED: affine_tissue_frame_wrt_camera_frame_"<<endl;
-    print_affine(affine_tissue_frame_wrt_camera_frame_);
-    //done defining the tissue frame and its transform w/rt camera frame
+    print_affine(affine_tissue_frame_wrt_camera_frame_);    
     
-    //already have the initial needle frame w/rt tissue frame:  
+}
+
+//main fnc: 
+// Return a vector full of affines describing desired gripper frames w/rt camera frame
+void NeedlePlanner::compute_needle_drive_gripper_affines(vector <Eigen::Affine3d> &gripper_affines_wrt_camera) {
+    
+
+    //must first compute the tissue frame and its transform w/rt camera frame
+    // by calling: compute_tissue_frame_wrt_camera
+    
+    //next, establish the initial needle frame w/rt tissue frame:
+    //per constructor, have a default initial needle frame w/rt tissue frame
+    // override this, if desired, via fnc 
     //rotate needle frame about needle z-axis;   
     //sample this path in angular increments dphi
     //given R_needle_frame_wrt_tissue_frame, the needle z-axis IS anti-parallel to the
@@ -201,10 +210,17 @@ void NeedlePlanner::compute_needle_drive_gripper_affines(Eigen::Vector3d entranc
     // take the needle-frame R_needle_wrt_tissue, and rotate it about the tissue-frame y-axis
     // keep the needle origin constant
     double dphi = M_PI/(NSAMPS_DRIVE_PLAN-1);
-    Eigen::Matrix3d Roty_needle;
+    Eigen::Vector3d kvec_needle;
+    kvec_needle = affine_needle_frame_wrt_tissue_.linear().col(2); //z-axis of needle frame
+    Eigen::Matrix3d Rot_needle;
+    Eigen::Matrix3d R0_needle_wrt_tissue_ = affine_needle_frame_wrt_tissue_.linear(); //update this, in case user changed init needle pose
     for (int ipose=0;ipose<NSAMPS_DRIVE_PLAN;ipose++) {
-        Roty_needle = Roty(-phi_insertion_); //rotate about tissue-frame -y axis
-        R_needle_wrt_tissue_ = Roty_needle*R0_needle_wrt_tissue_; //update rotation of needle drive
+        //Roty_needle = Roty(-phi_insertion_); //rotate about tissue-frame -y axis
+        //more general--allow any needle z axis:
+        Rot_needle = Rot_k_phi(kvec_needle,phi_insertion_);
+        //R_needle_wrt_tissue_ = Roty_needle*R0_needle_wrt_tissue_; //update rotation of needle drive
+        R_needle_wrt_tissue_ = Rot_needle*R0_needle_wrt_tissue_; //update rotation of needle drive
+        
         //cout<<"R_needle w/rt tissue:"<<endl;
         //cout<<R_needle_wrt_tissue_<<endl;
         //need to check these transforms...
@@ -268,6 +284,24 @@ Eigen::Matrix3d NeedlePlanner::Roty(double phi) {
     return Roty;
 }
 
+//fnc to compute a rotation matrix angle phi about vector k_vec
+Eigen::Matrix3d NeedlePlanner::Rot_k_phi(Eigen::Vector3d k_vec,double phi) {
+    Eigen::Matrix3d R_k_phi;
+    double kx = k_vec(0);
+    double ky = k_vec(1);
+    double kz = k_vec(2);
+    R_k_phi(0,0) = kx*kx*vers(phi)+cos(phi);
+    R_k_phi(0,1) = ky*kx*vers(phi)-kz*sin(phi);
+    R_k_phi(1,0) = R_k_phi(0,1);
+    R_k_phi(0,2) = kz*kx*vers(phi)+ky*sin(phi);
+    R_k_phi(2,0) = R_k_phi(0,2);
+    R_k_phi(1,1) = ky*ky*vers(phi)+cos(phi);
+    R_k_phi(1,2) = kz*ky*vers(phi)-kx*sin(phi);
+    R_k_phi(2,1) = R_k_phi(1,2);
+    R_k_phi(2,2) = kz*kz*vers(phi)+cos(phi);
+    return R_k_phi;
+}
+
 void NeedlePlanner::print_affine(Eigen::Affine3d affine) {
     cout<<"Rotation: "<<endl;
         cout<<affine.linear()<<endl;
@@ -305,3 +339,5 @@ void NeedlePlanner::write_needle_drive_affines_to_file(vector <Eigen::Affine3d> 
   outfile.close();
   ROS_INFO("wrote gripper motion plan to file gripper_poses_in_camera_coords.csp");
 }
+
+
