@@ -162,24 +162,25 @@ const double DH_q_offset6 = 0.0; //M_PI;
 
 const double deg2rad = M_PI/180.0;
 
-// NEED TO FIND THESE:
-const double DH_q_max0 = deg2rad*95; //141; //51;
-const double DH_q_max1 = deg2rad*60;
-const double DH_q_max2 = deg2rad*173.5;
-const double DH_q_max3 = deg2rad*150;
-const double DH_q_max4 = deg2rad*175.25;
-const double DH_q_max5 = deg2rad*120; //
-const double DH_q_max6 = deg2rad*175.25;
+// NEED TO FIND THESE: 
+//imported from joint_limits.txt file
+const double DH_q_max0 = 1.5707; //141; //51;
+const double DH_q_max1 = 0.7854;
+const double DH_q_max2 = 0.240;
+const double DH_q_max3 = 2.2689;
+const double DH_q_max4 = 1.5707;
+const double DH_q_max5 = 1.3963; //
+const double DH_q_max6 = 1.5707;
 
 //-141, -123, -173.5, -3, -175.25, -90, -175.25
-const double DH_q_min0 = -deg2rad*95; //51; //141;
-const double DH_q_min1 = -deg2rad*123;
-const double DH_q_min2 = -deg2rad*173.5; 
-const double DH_q_min3 = -deg2rad*3;
-const double DH_q_min4 = -deg2rad*175.25;
-const double DH_q_min5 = -deg2rad*90; //
-const double DH_q_min6 = -deg2rad*175.25;
-
+const double DH_q_min0 = -1.5707; //51; //141;
+const double DH_q_min1 = -0.7854;
+const double DH_q_min2 = 0; //should this be equal to insertion_offset to validate consistency?
+const double DH_q_min3 = -2.2689;
+const double DH_q_min4 = -1.5707;
+const double DH_q_min5 = -1.3963; //
+const double DH_q_min6 = 0;
+  
 const double DH_a_params[7]={DH_a1,DH_a2,DH_a3,DH_a4,DH_a5,DH_a6,DH_a7};
 double DH_d_params[7] = {DH_d1, DH_d2, DH_d3, DH_d4, DH_d5, DH_d6,DH_d7};
 const double DH_alpha_params[7] = {DH_alpha1, DH_alpha2, DH_alpha3, DH_alpha4, DH_alpha5, DH_alpha6,DH_alpha7};
