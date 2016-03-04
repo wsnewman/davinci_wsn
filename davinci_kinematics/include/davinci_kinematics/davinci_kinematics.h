@@ -4,6 +4,9 @@
  *
  * Created Sept 2, 2015
  */
+//NOTE:  FK and IK assume that the gripper-tip frame is expressed with respect
+// to the respective PMS base frame (not camera frame).  For motions w/rt camera
+//  first transform the desired camera-frame pose into base-frame pose.
 
 
 
@@ -21,6 +24,7 @@
 #include <tf/LinearMath/Vector3.h>
 #include <tf/LinearMath/QuadWord.h>
 #include <eigen3/Eigen/src/Geometry/Transform.h>
+#include <sensor_msgs/JointState.h>
 
 using namespace std;
 
@@ -163,22 +167,22 @@ const double DH_q_offset6 = 0.0; //M_PI;
 const double deg2rad = M_PI/180.0;
 
 // NEED TO FIND THESE:
-const double DH_q_max0 = deg2rad*95; //141; //51;
-const double DH_q_max1 = deg2rad*60;
-const double DH_q_max2 = deg2rad*173.5;
-const double DH_q_max3 = deg2rad*150;
-const double DH_q_max4 = deg2rad*175.25;
-const double DH_q_max5 = deg2rad*120; //
-const double DH_q_max6 = deg2rad*175.25;
+const double DH_q_max0 = 1.0; //deg2rad*45; //141; //51;
+const double DH_q_max1 = 0.7; //deg2rad*45;
+const double DH_q_max2 = 0.23; //0.5;
+const double DH_q_max3 = 2.25; //deg2rad*180;
+const double DH_q_max4 = 1.57; //deg2rad*90;
+const double DH_q_max5 = 1.39; //deg2rad*90; //
+const double DH_q_max6 = 1.57; //deg2rad*90;
 
 //-141, -123, -173.5, -3, -175.25, -90, -175.25
-const double DH_q_min0 = -deg2rad*95; //51; //141;
-const double DH_q_min1 = -deg2rad*123;
-const double DH_q_min2 = -deg2rad*173.5; 
-const double DH_q_min3 = -deg2rad*3;
-const double DH_q_min4 = -deg2rad*175.25;
-const double DH_q_min5 = -deg2rad*90; //
-const double DH_q_min6 = -deg2rad*175.25;
+const double DH_q_min0 = -1.0; //-deg2rad*45; //51; //141;
+const double DH_q_min1 = -0.7; //-deg2rad*45;
+const double DH_q_min2 =  0.01; 
+const double DH_q_min3 = -2.25; //-deg2rad*180;
+const double DH_q_min4 = -1.57; //-deg2rad*90;
+const double DH_q_min5 = -1.39; //-deg2rad*90; //
+const double DH_q_min6 = -1.57; //-deg2rad*90;
 
 const double DH_a_params[7]={DH_a1,DH_a2,DH_a3,DH_a4,DH_a5,DH_a6,DH_a7};
 double DH_d_params[7] = {DH_d1, DH_d2, DH_d3, DH_d4, DH_d5, DH_d6,DH_d7};
@@ -187,6 +191,21 @@ const double DH_q_offsets[7] = {DH_q_offset0,DH_q_offset1, DH_q_offset2, DH_q_of
 const double q_lower_limits[7] = {DH_q_min0,DH_q_min1, DH_q_min2, DH_q_min3, DH_q_min4, DH_q_min5, DH_q_min6};
 const double q_upper_limits[7] = {DH_q_max0,DH_q_max1, DH_q_max2, DH_q_max3, DH_q_max4, DH_q_max5, DH_q_max6};
 
+string q1_psm1_jnt_name("one_outer_yaw_joint"); //cradle tip left/right
+string q2_psm1_jnt_name("one_outer_pitch_joint"); //4-bar linkage, lean fwd/back
+string d3_psm1_jnt_name("one_outer_insertion_joint"); //shaft insertion, prismatic jnt
+string q4_psm1_jnt_name("one_outer_roll_joint"); //shaft rotation
+string q5_psm1_jnt_name("one_outer_wrist_pitch_joint"); // wrist bend
+string q6_psm1_jnt_name("one_outer_wrist_yaw_joint"); // jaw rotation?
+string q7_psm1_jnt_name("one_outer_wrist_open_angle_joint"); // gripper opening?
+
+string q1_psm2_jnt_name("two_outer_yaw_joint"); //cradle tip left/right
+string q2_psm2_jnt_name("two_outer_pitch_joint"); //4-bar linkage, lean fwd/back
+string d3_psm2_jnt_name("two_outer_insertion_joint"); //shaft insertion, prismatic jnt
+string q4_psm2_jnt_name("two_outer_roll_joint"); //shaft rotation
+string q5_psm2_jnt_name("two_outer_wrist_pitch_joint"); // wrist bend
+string q6_psm2_jnt_name("two_outer_wrist_yaw_joint"); // jaw rotation?
+string q7_psm2_jnt_name("two_outer_wrist_open_angle_joint"); // gripper opening?
 
 class Davinci_fwd_solver {
 public:
@@ -225,10 +244,13 @@ public:
     Eigen::Affine3d fwd_kin_solve(const Vectorq7x1& q_vec);  
     //the following version takes args of DH thetas and d's; used by above fnc
     Eigen::Affine3d fwd_kin_solve_DH(const Eigen::VectorXd& theta_vec, const Eigen::VectorXd& d_vec);
-
     
+    int psm1_joint_indices_from_namelist[7];
+    int psm2_joint_indices_from_namelist[7];
+    bool get_jnt_val_by_name(string jnt_name,sensor_msgs::JointState jointState,double &qval);
+
     Eigen::Affine3d get_affine_frame(int i) { return affine_products_[i]; }; // return affine of frame i w/rt base
-     
+    void gen_rand_legal_jnt_vals(Vectorq7x1 &qvec);     
 };
 
 //IK class derived from FK class:
@@ -240,15 +262,21 @@ public:
     void get_solns(std::vector<Vectorq7x1> &q_solns);
     bool fit_joints_to_range(Vectorq7x1 &qvec);
     Eigen::Vector3d q123_from_wrist(Eigen::Vector3d wrist_pt);
-    Eigen::Vector3d compute_w_from_tip(Eigen::Affine3d affine_gripper_tip, Eigen::Vector3d &zvec_4);
+    Eigen::Vector3d compute_fk_wrist(Eigen::Vector3d q123);
+    int compute_q456(Eigen::Vector3d q123,Eigen::Vector3d z_vec4,Eigen::Affine3d desired_hand_pose);
+    //Eigen::Vector3d compute_w_from_tip(Eigen::Affine3d affine_gripper_tip, Eigen::Vector3d &zvec_4);
+    Eigen::Vector3d compute_w_from_tip(Eigen::Affine3d affine_gripper_tip, Eigen::Vector3d &zvec_4,
+        Eigen::Vector3d &alt_O4);
     int  ik_solve(Eigen::Affine3d const& desired_hand_pose);
     Vectorq7x1 get_soln() {return q_vec_soln_;};
 
 private:
-    bool fit_q_to_range(double q_min, double q_max, double &q);    
+    bool fit_q_to_range(double q_min, double q_max, double &q);  
+    
     std::vector<Vectorq7x1> q7dof_solns_;
     std::vector<Vectorq7x1> q_solns_fit_;
     Vectorq7x1 q_vec_soln_;
+    double min_dist_O4_to_gripper_tip_;
  
   
     //Eigen::MatrixXd Jacobian_;

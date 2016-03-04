@@ -1,9 +1,30 @@
 // davinci_kinematics implementation file; start w/ fwd kin
 
+
 //"include" path--should just be <davinci_kinematics/davinci_kinematics.h>, at least for modules outside this package
 #include <davinci_kinematics/davinci_kinematics.h>
+#include <sensor_msgs/JointState.h>
 
 using namespace std;
+
+//fnc to extract a joint value from a JointState message;
+// provide the name of interest, as a C++ string, and provide the entire
+// jointState message;  will set the value of "qval" arg, if possible;
+// will return "true" or "false" to indicate if name was found on list
+bool Davinci_fwd_solver::get_jnt_val_by_name(string jnt_name,sensor_msgs::JointState jointState,double &qval) {
+    int njnts = jointState.name.size();
+    for (int ijnt = 0;ijnt<njnts;ijnt++) {
+        if (jnt_name.compare(jointState.name[ijnt])==0) {
+            // found a name match!
+            qval= jointState.position[ijnt];
+            ROS_INFO("found name match for %s at position %d, jnt val = %f",jnt_name.c_str(),ijnt,qval);
+            return true;
+        }
+    }
+    //if get to here, did not find a match:
+    ROS_WARN("no match for joint name %s",jnt_name.c_str());
+    return false;
+}
 
 //some utilities to convert data types:
 Eigen::Affine3f  Davinci_fwd_solver::transformTFToEigen(const tf::Transform &t) {
@@ -128,7 +149,7 @@ void Davinci_fwd_solver::convert_qvec_to_DH_vecs(const Vectorq7x1& q_vec) {
 
     dvals_DH_vec_(2)+=q_vec(2);
     //ROS_INFO("q_vec(2), dvals_DH_vec_(2) = %f, %f",q_vec(2),dvals_DH_vec_(2));
-    ROS_INFO("using theta1, theta2, d3 = %f %f %f", thetas_DH_vec_(0),thetas_DH_vec_(1),dvals_DH_vec_(2));
+    ROS_INFO("using DH theta1, theta2, d3 = %f %f %f", thetas_DH_vec_(0),thetas_DH_vec_(1),dvals_DH_vec_(2));
 
 }
 //    Eigen::VectorXd thetas_DH_vec_,dvals_DH_vec_;
@@ -261,14 +282,28 @@ Eigen::Affine3d Davinci_fwd_solver::fwd_kin_solve(const Vectorq7x1& q_vec) {
     return affine_gripper_wrt_base_;
 }
 
+//gen_rand_legal_jnt_vals: compute random values within legal joint range:
+void Davinci_fwd_solver::gen_rand_legal_jnt_vals(Vectorq7x1 &qvec) {
+    double drand_val;
+    qvec(6)=0;
+    for (int i=0;i<6;i++) {
+        drand_val = ((double) rand())/((double) RAND_MAX);
+        qvec(i) = q_lower_limits[i] + (q_upper_limits[i]-q_lower_limits[i])*drand_val;
+           //q_lower_limits[i],q_upper_limits[i]
+        }
 
+            //if (q<q_lower_limits[i]) does_fit=false;
+            //if (q>q_upper_limits[i]) does_fit=false;
+}
 
 
 //IK methods:
 Davinci_IK_solver::Davinci_IK_solver() {
     //constructor: 
     //ROS_INFO("Davinci_IK_solver constructor");
-
+    min_dist_O4_to_gripper_tip_ = sqrt(gripper_jaw_length*gripper_jaw_length 
+             + dist_from_wrist_bend_axis_to_gripper_jaw_rot_axis*dist_from_wrist_bend_axis_to_gripper_jaw_rot_axis);
+    ROS_INFO("min_dist_O4_to_gripper_tip_=%f",min_dist_O4_to_gripper_tip_);
 }
 
 //accessor function to get all solutions
@@ -316,7 +351,8 @@ Eigen::Vector3d Davinci_IK_solver::q123_from_wrist(Eigen::Vector3d wrist_pt) {
 // return the wrist point...but also calculate zvec_4
 //  zvec_4 has a +/- ambiguity
 
-Eigen::Vector3d Davinci_IK_solver::compute_w_from_tip(Eigen::Affine3d affine_gripper_tip, Eigen::Vector3d &zvec_4) {
+Eigen::Vector3d Davinci_IK_solver::compute_w_from_tip(Eigen::Affine3d affine_gripper_tip, Eigen::Vector3d &zvec_4,
+   Eigen::Vector3d &alt_O4) {
   // the following are all expressed w/rt the 0 frame
   Eigen::Vector3d zvec_tip_frame,xvec_tip_frame,origin_5, zvec_5, xvec_5,origin_4; // zvec_4;   
   Eigen::Matrix3d R_tip;
@@ -347,24 +383,48 @@ Eigen::Vector3d Davinci_IK_solver::compute_w_from_tip(Eigen::Affine3d affine_gri
   // plane P_perp is perpendicular to z_perp and contains O5
   // plane P_parallel is perpendicular to z_parallel and contains O5, base origin, and z_perp
   z_perp = zvec_5; //used to define a plane perpendicular to jaw-rotation axis
-  z_parallel = z_perp.cross(origin_5); // O5 - O_0 is same as O5
-  z_parallel = z_parallel/(z_parallel.norm());
-  //cout<<"z_parallel: "<<z_parallel.transpose()<<endl;
-  xvec_5 = z_perp.cross(z_parallel); // could be + or -
-  xvec_5 = xvec_5/(xvec_5.norm()); // should not be necessary--already unit length
-  //cout<<"xvec_5: "<<xvec_5.transpose()<<endl;
   
-  Eigen::Vector3d origin_4a,origin_4b;
+  //z_parallel is a problem if zvec_5 points at the origin (portal).
+  //worst case of feasible pose is when q5 is +/- 90 deg.
+  Eigen::Vector3d p_hat_O_O5 = origin_5/origin_5.norm();
+
+  z_parallel = z_perp.cross(p_hat_O_O5); // O5 - O_0 is same as O5
+  double mag_z_perp_cross_O5 = z_parallel.norm();
+  cout<<"zvec_5: "<<zvec_5.transpose()<<endl;
+  cout<<"p_hat_O5: "<<p_hat_O_O5.transpose()<<endl;
+  ROS_WARN("mag_z_perp_cross_O5=%f",mag_z_perp_cross_O5);
+  z_parallel = z_parallel/mag_z_perp_cross_O5;
+  //cout<<"z_parallel: "<<z_parallel.transpose()<<endl;
+  xvec_5 = -z_perp.cross(z_parallel); // could be + or -  ?
+  xvec_5 = xvec_5/(xvec_5.norm()); // should not be necessary--already unit length
+  cout<<"xvec_5: "<<xvec_5.transpose()<<endl;
+  
+  
+  //should get gripper-jaw angle from gripper z_des and xvec_5
+  //q6 is rotation from xvec_5 to z_gripper_des about zvec_5
+  
+  
+  Eigen::Vector3d origin_4a,origin_4b,O_tip;
+  O_tip = affine_gripper_tip.translation();
   origin_4a = origin_5-dist_from_wrist_bend_axis_to_gripper_jaw_rot_axis*xvec_5;
   origin_4b = origin_5+dist_from_wrist_bend_axis_to_gripper_jaw_rot_axis*xvec_5;
+  double dist_O4a_gripper_tip = (O_tip-origin_4a).norm();
+  double dist_O4b_gripper_tip = (O_tip-origin_4b).norm();
+  cout<<"dist_O4a_gripper_tip="<<dist_O4a_gripper_tip<<"; dist_O4b_gripper_tip="<<dist_O4b_gripper_tip<<endl;
+  //if ((dist_O4a_gripper_tip<min_dist_O4_to_gripper_tip_)&&(dist_O4b_gripper_tip<min_dist_O4_to_gripper_tip_)) {
+  //    ROS_WARN("BOTH 04 options too close to gripper tip!");
+  //}
   origin_4 = origin_4a;
+  alt_O4 = origin_4b;
+  /*
   if (origin_4b.norm()<origin_4a.norm()) {
         origin_4 = origin_4b;
+        alt_O4 = origin_4a;
         //FIX THIS?
         xvec_5 = -xvec_5; //default solution was incorrect, so negate x5 direction
         // but we don't return xvec5 anyway, so no issue?
   }
-  
+  */ 
   // possible error here: need to get sign of xvec_5 correct.
   // given O_4 and O_5, should have xvec_5 point from O_4 towards O_5
   //cout<<"origin_4: "<<origin_4.transpose()<<endl;
@@ -384,7 +444,7 @@ bool Davinci_IK_solver::fit_q_to_range(double q_min, double q_max, double &q) {
         q-= 2.0*M_PI;
     }    
     if (q<q_min)
-        return false;
+        return false; //rtn false if no periodic soln in range
     else
         return true;
 }
@@ -395,7 +455,18 @@ bool Davinci_IK_solver::fit_joints_to_range(Vectorq7x1 &qvec) {
     double q;
     for (int i=0;i<7;i++) {
         q = qvec[i];
-        does_fit = fit_q_to_range(q_lower_limits[i],q_upper_limits[i],q);
+        if (i!=2) { //treat d3 differently
+                does_fit = fit_q_to_range(q_lower_limits[i],q_upper_limits[i],q);
+        }
+        else { //special case for d3...although generic formula also works in this case
+            does_fit=true;
+            if (q<q_lower_limits[i]) does_fit=false;
+            if (q>q_upper_limits[i]) does_fit=false;
+        }
+        if (!does_fit) {
+            ROS_WARN("IK err: jnt %d;  lower lim: %f; upper lim: %f desired val = %f;",
+                    i,q_lower_limits[i],q_upper_limits[i],q);
+        }
         qvec[i] = q;
         fits = fits&&does_fit;
     }
@@ -405,24 +476,178 @@ bool Davinci_IK_solver::fit_joints_to_range(Vectorq7x1 &qvec) {
         return false;
 }
 
-//uses above; first 3 joint displacements are unique within joint limits;
-// it appears legal IK solns are unique--needs further consideration
-// need to implement and apply joint-limit checking
+
+
 int Davinci_IK_solver::ik_solve(Eigen::Affine3d const& desired_hand_pose) // solve IK
 { 
-   Eigen::Vector3d z_vec4,z4_wrt_3,O_6_wrt_4,xvec6_wrt_5;
-   Eigen::Vector3d w_wrt_base,q123;
+   Eigen::Vector3d z_vec4,z4_wrt_3,O_6_wrt_4,xvec6_wrt_5,O_5_wrt_base,zvec5_wrt_base;
+   Eigen::Vector3d w_wrt_base,q123, alt_w_wrt_base, alt_q123,des_tip_origin,zvec_tip_wrt_base;
+   Eigen::Vector3d w_fk_test;
    Eigen::VectorXd theta_vec,d_vec;   
-   Eigen::Affine3d affine_frame_wrt_base,affine_frame6_wrt_4,affine_frame6_wrt_5,fk_gripper_frame;
+   Eigen::Affine3d affine_test_fk;
+   Eigen::Matrix3d R_tip_wrt_base;
+   double err;
+   //disallow a positive tool-tip z-height--> would be above the portal
+   // in fact, must insert at least past the wrist joint, z4, so tip must
+   // tip_z must be at least 
+   des_tip_origin = desired_hand_pose.translation();
+   double tool_tip_z_des = des_tip_origin(2);
+   if (tool_tip_z_des>0.0) {
+       ROS_WARN("requested tool tip height above the portal!");
+       cout<<"tool_tip_z_des: "<<tool_tip_z_des<<endl;
+       return 0; //no solns
+   }
+   //check if O5 is above the portal:
+   R_tip_wrt_base= desired_hand_pose.linear();
+   zvec_tip_wrt_base= R_tip_wrt_base.col(2); 
+   O_5_wrt_base = des_tip_origin - zvec_tip_wrt_base*gripper_jaw_length;
+   if (O_5_wrt_base(2)>0.0) {
+       ROS_WARN("requested jaw axis height above the portal!");
+       cout<<"O_5_wrt_base: "<<O_5_wrt_base.transpose()<<endl;
+       return 0; //no solns      
+   }
+   //test if gripper z-axis implies excessive wrist bend:
+   // consider vector from portal (origin) to O5 (jaws-axis), and project
+   // the desired gripper z-axis onto this vector.  Result must be >0 for
+   // wrist bend to be |q5|< pi/2
+   // this is a necessary but not sufficient test; 
+   //can still violate wrist-bend>pi/2 and pass this test
+   double projection_gripper_zvec_onto_O5_vec = zvec_tip_wrt_base.dot(O_5_wrt_base);
+   if (projection_gripper_zvec_onto_O5_vec<= 0.0) {
+       ROS_WARN("requested gripper z-vec points towards portal--excessive wrist bend required");
+       return 0; //no solns   
+   }
+   //; // by definition of tip frame
+   //better: look at cross product of O_5_wrt_base and zvec5_wrt_base
+   zvec5_wrt_base = -R_tip_wrt_base.col(0); // gripper x-axis is same as z5 
+   double mag_z5xO5 = (zvec5_wrt_base.cross(O_5_wrt_base)).norm();
+   if (mag_z5xO5 < dist_from_wrist_bend_axis_to_gripper_jaw_rot_axis) {
+       ROS_WARN("mag_z5xO5 =%f < L_w_to_gripperJaw_axis; --> excessive wrist bend",mag_z5xO5);
+       return 0;
+   }
+   
    //first step: get the wrist-bend origin on tool shaft from desired gripper pose:
-   w_wrt_base = compute_w_from_tip(desired_hand_pose,z_vec4);
+   //desired_hand_pose input, z_vec4, alt_w_wrt_base output
+   w_wrt_base = compute_w_from_tip(desired_hand_pose,z_vec4,alt_w_wrt_base);
    //cout<<"origin4 from IK: "<<w_wrt_base.transpose()<<endl;
    //cout<<"z_vec4 from IK: "<<z_vec4.transpose()<<endl;
    
    //next step: get theta1, theta2, d3 soln from wrist position:
    q123 = q123_from_wrist(w_wrt_base);
+   w_fk_test = compute_fk_wrist(q123);
+   cout<<"w_wrt_base: "<<w_wrt_base.transpose()<<endl;
+   cout<<"w_fk_test :"<<w_fk_test.transpose()<<endl;
+   cout<<"w_err: "<<(w_wrt_base-w_fk_test).norm()<<endl;
    //cout<<"q123: "<<q123.transpose()<<endl;
+   compute_q456(q123,z_vec4,desired_hand_pose);
    
+ 
+   //DEBUG:
+   //test this soln:
+   cout<<"SOLN: "<<endl;
+   affine_test_fk= fwd_kin_solve(q_vec_soln_);
+   cout<<"soln: "<<q_vec_soln_.transpose()<<endl;
+   //if (!fit_joints_to_range(q_vec_soln_)) ROS_WARN("joint range violation");   
+   //cout<<"fk soln: "<<endl;
+   //cout<<"gripper origin: "<<affine_test_fk.translation().transpose()<<endl;
+   err=(affine_test_fk.translation()-desired_hand_pose.translation()).norm();
+   ROS_WARN("gripper origin err: %f",err);
+   //cout<<"Rotation:"<<endl;
+   //cout<<affine_test_fk.linear()<<endl;
+   //cout<<"Rotation err:"<<endl;
+   //cout<<(desired_hand_pose.linear()-affine_test_fk.linear())<<endl;
+  
+   //compute_q456(q123,-z_vec4,desired_hand_pose);
+   //affine_test_fk= fwd_kin_solve(q_vec_soln_);
+   // cout<<"soln: "<<q_vec_soln_.transpose()<<endl;
+   //if (!fit_joints_to_range(q_vec_soln_)) ROS_WARN("joint range violation"); 
+    
+   //cout<<"fk soln: "<<endl;
+   //cout<<"gripper origin: "<<affine_test_fk.translation().transpose()<<endl;
+   //err=(affine_test_fk.translation()-desired_hand_pose.translation()).norm();
+   //ROS_WARN("Soln 1 err w/ -zvec:  %f",err);
+   //cout<<"soln: "<<q_vec_soln_.transpose()<<endl;
+   
+   
+   //alt soln:
+   /*
+   alt_q123 = q123_from_wrist(alt_w_wrt_base); //the other possibility...unlikely, and out of jnt range
+   w_fk_test = compute_fk_wrist(alt_q123);   
+   //cout<<"q123: "<<q123.transpose()<<endl;
+   //cout<<"alt w_wrt_base: "<<alt_w_wrt_base.transpose()<<endl;
+   //cout<<"w_fk_test :"<<w_fk_test.transpose()<<endl;
+   //cout<<"alt soln, w_err: "<<(alt_w_wrt_base-w_fk_test).norm()<<endl;
+   
+   compute_q456(alt_q123,-z_vec4,desired_hand_pose); //+/- z_vec4?
+   cout<<"ALT SOLN: "<<endl;
+   affine_test_fk= fwd_kin_solve(q_vec_soln_);
+   cout<<"soln: "<<q_vec_soln_.transpose()<<endl;
+   //if (!fit_joints_to_range(q_vec_soln_)) ROS_WARN("joint range violation");    
+   //cout<<"fk soln: "<<endl;
+   //cout<<"gripper origin: "<<affine_test_fk.translation().transpose()<<endl;
+   err=(affine_test_fk.translation()-desired_hand_pose.translation()).norm();
+   ROS_WARN("alt soln gripper origin err: %f",err);
+   //cout<<"Rotation:"<<endl;
+   //cout<<affine_test_fk.linear()<<endl;
+   //cout<<"Rotation err:"<<endl;
+   //cout<<(desired_hand_pose.linear()-affine_test_fk.linear())<<endl;
+   
+   compute_q456(alt_q123,z_vec4,desired_hand_pose); //+/- z_vec4?
+   affine_test_fk= fwd_kin_solve(q_vec_soln_);
+   cout<<"soln: "<<q_vec_soln_.transpose()<<endl;
+   //if (!fit_joints_to_range(q_vec_soln_)) ROS_WARN("joint range violation");    
+   //cout<<"fk soln: "<<endl;
+   //cout<<"gripper origin: "<<affine_test_fk.translation().transpose()<<endl;
+   err=(affine_test_fk.translation()-desired_hand_pose.translation()).norm();
+   ROS_WARN("alt soln gripper origin, -zvec err: %f",err);  
+   */
+   //fit_joints_to_range(q_vec_soln_); // erdem IK bug #3: check and correct angle periodicity.        
+   //cout<<"soln: "<<q_vec_soln_.transpose()<<endl;
+   //cout<<"origin: ";
+   //cout<<affine_frame_wrt_base.translation().transpose()<<endl;  
+   //ROS_INFO("x-axis from above is reference for theta4");
+   //double sval = 
+   if (fit_joints_to_range(q_vec_soln_)) //rtns true if legal soln
+    return 1; // 1 legal soln
+   else
+       return 0; //0 legal solns
+   //must use get_soln() to return q_vec_soln_
+}
+
+//debug fnc: compute FK of wrist pt from q123
+//could have put this in IK instead...
+Eigen::Vector3d Davinci_IK_solver::compute_fk_wrist(Eigen::Vector3d q123)
+{
+   Eigen::Affine3d affine_frame_wrt_base;
+   Eigen::Vector3d wrist_pt;
+   
+   Eigen::VectorXd theta_vec,d_vec; 
+   //compute FK of this soln:
+   theta_vec.resize(7); //<<q123(0),q123(1),0,0,0,0,0;
+   theta_vec<<0,0,0,0,0,0,0;
+   theta_vec(0) = q123(0);
+   theta_vec(1) = q123(1);
+   //cout<<"theta_vec: "<<theta_vec.transpose()<<endl;
+   d_vec.resize(7);
+   d_vec<<0,0,0,0,0,0,0;
+   d_vec(2) = q123(2);
+   //cout<<"d_vec: "<<d_vec.transpose()<<endl;
+   
+   //use partial IK soln to compute FK of first three frames:
+   //ROS_INFO("calling fwd_kin_solve_DH()");
+   fwd_kin_solve_DH(theta_vec, d_vec);
+   // ROS_INFO("wrist frame (frame 3) from IK/FK: ");
+   affine_frame_wrt_base = get_affine_frame(2); // this frame depends only on 1st 3 var's
+   wrist_pt = affine_frame_wrt_base.translation();
+   return wrist_pt;
+}
+
+//populates q_vec_soln_; rtns 0 if not legal solns
+int Davinci_IK_solver::compute_q456(Eigen::Vector3d q123,Eigen::Vector3d z_vec4,Eigen::Affine3d desired_hand_pose)
+{
+   Eigen::Affine3d affine_frame_wrt_base,affine_frame6_wrt_4,affine_frame6_wrt_5,fk_gripper_frame;
+   Eigen::Vector3d z4_wrt_3,O_6_wrt_4,xvec6_wrt_5;
+   Eigen::VectorXd theta_vec,d_vec; 
    //compute FK of this soln:
    theta_vec.resize(7); //<<q123(0),q123(1),0,0,0,0,0;
    theta_vec<<0,0,0,0,0,0,0;
@@ -481,7 +706,7 @@ int Davinci_IK_solver::ik_solve(Eigen::Affine3d const& desired_hand_pose) // sol
    double theta6 = atan2(xvec6_wrt_5(1),xvec6_wrt_5(0));
    //ROS_INFO("theta6 = %f",theta6); 
    theta_vec(5) = theta6;   
-   fk_gripper_frame = fwd_kin_solve_DH(theta_vec, d_vec);  
+   //fk_gripper_frame = fwd_kin_solve_DH(theta_vec, d_vec);  
    //cout<<"FK gripper frame: ";
    //cout<<"origin: "<<fk_gripper_frame.translation().transpose()<<endl;
    //cout<<"R:"<<endl;
@@ -489,14 +714,4 @@ int Davinci_IK_solver::ik_solve(Eigen::Affine3d const& desired_hand_pose) // sol
    
    // pack the solution in to a single vector
    q_vec_soln_ =  convert_DH_vecs_to_qvec(theta_vec, d_vec);
-   fit_joints_to_range(q_vec_soln_); // erdem IK bug #3: check and correct angle periodicity.        
-   //cout<<"soln: "<<q_vec_soln_.transpose()<<endl;
-   //cout<<"origin: ";
-   //cout<<affine_frame_wrt_base.translation().transpose()<<endl;  
-   //ROS_INFO("x-axis from above is reference for theta4");
-   //double sval = 
-    
-    return 0; // dummy
-}
-
-
+   }

@@ -51,6 +51,8 @@ public:
     //the next 4 fncs change params of the default needle grasp transform
     void set_affine_grasp_frame_wrt_gripper_frame(Eigen::Affine3d affine)
          {affine_grasp_frame_wrt_gripper_frame_ = affine; }
+    void set_affine_needle_frame_wrt_tissue(Eigen::Affine3d affine)
+    { affine_needle_frame_wrt_tissue_ = affine; }
     void set_grasp_depth(double depth) { grasp_depth_ = depth; } // this far from gripper tip
     //two kinematic choices, here referred to as "thumb up" or "thumb down"
     //hmm...maybe redundant with specifying affine_needle_frame_wrt_grasp_frame
@@ -60,25 +62,30 @@ public:
           else ROS_WARN("grasp status not legal; not being changed"); }
     void set_grab_needle_plus_minus_z(int needle_plus_minus_z) {
           if (GRASP_W_NEEDLE_POSITIVE_GRIPPER_Z == grab_needle_plus_minus_z_) grab_needle_plus_minus_z_= needle_plus_minus_z;
-          else if (GRASP_W_NEEDLE_POSITIVE_GRIPPER_Z == grab_needle_plus_minus_z_) grab_needle_plus_minus_z_= needle_plus_minus_z;
+          else if (GRASP_W_NEEDLE_NEGATIVE_GRIPPER_Z == grab_needle_plus_minus_z_) grab_needle_plus_minus_z_= needle_plus_minus_z;
           else ROS_WARN("grasp status needle z-axis sign not legal; not being changed"); }
     
+    void compute_grasp_transform(); //if use above sets, apply logic to compute grasp transform
+    void compute_grasp_transform(double phi_x,double phi_y);
     //the next fnc can override all of the above
     void set_affine_needle_frame_wrt_gripper_frame(Eigen::Affine3d affine)
          {affine_needle_frame_wrt_gripper_frame_ = affine; }
 
+    void compute_tissue_frame_wrt_camera(Eigen::Vector3d entrance_pt,
+        Eigen::Vector3d exit_pt, Eigen::Vector3d tissue_normal);
     //main fnc: given tissue entrance pt, exit pt and surface normal (w/rt camera frame)
     // compute a sequence of gripper poses (w/rt camera frame) for needle driving
-    void compute_needle_drive_gripper_affines(Eigen::Vector3d entrance_pt,
-        Eigen::Vector3d exit_pt, Eigen::Vector3d tissue_normal, 
-        vector <Eigen::Affine3d> &gripper_affines_wrt_camera);
+    void compute_needle_drive_gripper_affines(vector <Eigen::Affine3d> &gripper_affines_wrt_camera);
     
     void write_needle_drive_affines_to_file(vector <Eigen::Affine3d> &gripper_affines_wrt_camera);
+    double vers(double phi) { return (1.0-cos(phi)); } 
     
     //some utility functions:
     //for rotations about z and y axes
     Eigen::Matrix3d Rotz(double phi);
     Eigen::Matrix3d Roty(double phi);
+    Eigen::Matrix3d Rotx(double phi);
+    Eigen::Matrix3d Rot_k_phi(Eigen::Vector3d k_vec,double phi);
     void print_affine(Eigen::Affine3d affine); //print out an affine for debug
 
 private:
@@ -102,6 +109,8 @@ private:
     Eigen::Affine3d affine_grasp_frame_wrt_gripper_frame_; 
     Eigen::Vector3d O_needle_frame_wrt_grasp_frame_;
     Eigen::Matrix3d R_needle_frame_wrt_grasp_frame_;
+    Eigen::Matrix3d R0_N_wrt_G_; 
+    Eigen::Vector3d O0_N_wrt_G_;
     Eigen::Affine3d affine_needle_frame_wrt_grasp_frame_; 
     Eigen::Affine3d affine_needle_frame_wrt_gripper_frame_; 
     

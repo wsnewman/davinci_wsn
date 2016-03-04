@@ -12,6 +12,7 @@
 #include<davinci_traj_streamer/trajAction.h>
 #include <trajectory_msgs/JointTrajectoryPoint.h>
 #include <davinci_kinematics/davinci_kinematics.h>
+#include <std_msgs/Float64.h>
 
 using namespace std;
 
@@ -49,8 +50,8 @@ private:
         one_j3_pub_,one_j4_pub_,one_j5_pub_,one_j6_pub_,one_j7_pub_,one_j7_mimic_pub_;
     ros::Publisher  two_j1_pub_,two_j2_pub_,two_j2_1_pub_,two_j2_2_pub_,two_j2_3_pub_,two_j2_4_pub_,two_j2_5_pub_,
     two_j3_pub_,two_j4_pub_,two_j5_pub_,two_j6_pub_,two_j7_pub_,two_j7_mimic_pub_;
-    Davinci_fwd_solver davinci_fwd_solver; //instantiate a forward-kinematics solver; don't need this...just for testing purposes   
-
+    Davinci_fwd_solver davinci_fwd_solver_; //instantiate a forward-kinematics solver; don't need this...just for testing purposes   
+    ros::Publisher pub_grip1_x_, pub_grip1_y_, pub_grip1_z_, pub_grip2_x_,pub_grip2_y_,pub_grip2_z_;
     void initializePublishers();
     //DavinciJointPublisher davinciJointPublisher; //(&nh_); //:&nh_;//(&nh_);//(nh_); //DavinciJointPublisher davinciJointPublisher(&nh);
 public:
@@ -164,6 +165,14 @@ void TrajActionServer::initializePublishers() {
         two_j6_pub_ =  nh_.advertise<std_msgs::Float64>("/davinci/two_joint6_position_controller/command", 1, true);
         two_j7_pub_ =  nh_.advertise<std_msgs::Float64>("/davinci/two_joint7_position_controller/command", 1, true);  
         two_j7_mimic_pub_ = nh_.advertise<std_msgs::Float64>("/davinci/two_joint7_position_controller_mimic/command", 1, true);  
+ 
+        pub_grip1_x_ = nh_.advertise<std_msgs::Float64>("grip1_x", 1, true);  
+        pub_grip1_y_ = nh_.advertise<std_msgs::Float64>("grip1_y", 1, true);
+        pub_grip1_z_ = nh_.advertise<std_msgs::Float64>("grip1_z", 1, true);
+        pub_grip2_x_ = nh_.advertise<std_msgs::Float64>("grip2_x", 1, true);
+        pub_grip2_y_ = nh_.advertise<std_msgs::Float64>("grip2_y", 1, true);
+        pub_grip2_z_ = nh_.advertise<std_msgs::Float64>("grip2_z", 1, true);       
+
 }
 
 void TrajActionServer::command_joints(Eigen::VectorXd q_cmd) {
@@ -244,8 +253,11 @@ void TrajActionServer::executeCB(const actionlib::SimpleActionServer<davinci_tra
     double traj_clock, dt_segment, dq_segment, delta_q_segment, traj_final_time;
     int isegment;
     trajectory_msgs::JointTrajectoryPoint trajectory_point0;
-
+    std_msgs::Float64 float64_msg;
     Eigen::VectorXd qvec, qvec0, qvec_prev, qvec_new;
+    Vectorq7x1 q_vec_psm1,q_vec_psm2;
+    Eigen::Affine3d affine_psm1,affine_psm2;
+    Eigen::Vector3d Origin;
     // TEST TEST TEST
     //Eigen::VectorXd q_vec;
     //q_vec<<0.1,0.2,0.15,0.4,0.5,0.6,0.7;    
@@ -316,6 +328,16 @@ void TrajActionServer::executeCB(const actionlib::SimpleActionServer<davinci_tra
         //davinciJointPublisher.pubJointStatesAll(qvec_new);
         command_joints(qvec_new);  //map these to all gazebo joints and publish as commands      
         qvec_prev = qvec_new;
+        //some DEBUG: compute and publish FK:
+        for (int i=0;i<7;i++) q_vec_psm1(i) = qvec_new(i);     
+        affine_psm1 = davinci_fwd_solver_.fwd_kin_solve(q_vec_psm1);
+        Origin = affine_psm1.translation();
+        float64_msg.data = Origin(0);
+        pub_grip1_x_.publish(float64_msg);
+        float64_msg.data = Origin(1);
+        pub_grip1_y_.publish(float64_msg);
+        float64_msg.data = Origin(2);
+        pub_grip1_z_.publish(float64_msg);        
 
         //cout << "traj_clock: " << traj_clock << "; vec:" << qvec_new.transpose() << endl;
         ros::spinOnce();

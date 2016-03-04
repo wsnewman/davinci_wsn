@@ -59,7 +59,9 @@ Can start up this way:
 which starts 2 psm's along with stereo cameras, a table and a 1mm blue bar
 `rosrun davinci_traj_streamer davinci_traj_interpolator_as`
 to get the trajectory interpolator running
-And from playfiles directory, 
+And from playfiles directory, retract grippers with:
+`rosrun playfile_reader playfile_cartspace retract.csp`
+then can run a camera-space playfile with, e.g.:
 `rosrun playfile_reader playfile_cameraspace test_cameraspace.csp`
 which interprets a camera-space Cartesian file to drive the grippers.
 View in rviz to see grippers from /davinci/left_camera/image_raw
