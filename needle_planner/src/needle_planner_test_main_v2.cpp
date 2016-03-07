@@ -22,6 +22,7 @@
 #include <davinci_kinematics/davinci_kinematics.h>
 
 //example use of needle-planner library
+bool test_debug=false;
 
 Eigen::Affine3d transformTFToEigen(const tf::Transform &t) {
     Eigen::Affine3d e;
@@ -72,8 +73,10 @@ int main(int argc, char** argv) {
     tf::StampedTransform tfResult_one, tfResult_two;
     Eigen::Affine3d affine_lcamera_to_psm_one, affine_lcamera_to_psm_two, affine_gripper_wrt_base;
     bool tferr = true;
+    int ntries = 0;
     ROS_INFO("waiting for tf between base and right_hand...");
     while (tferr) {
+        if (ntries > 5) break; //give up and accept default after this many tries
         tferr = false;
         try {
             //The direction of the transform returned will be from the target_frame to the source_frame. 
@@ -85,13 +88,33 @@ int main(int argc, char** argv) {
             tferr = true;
             ros::Duration(0.5).sleep(); // sleep for half a second
             ros::spinOnce();
+            ntries++;
         }
     }
-    ROS_INFO("tf is good");
-    //affine_lcamera_to_psm_one is the position/orientation of psm1 base frame w/rt left camera link frame
-    // need to extend this to camera optical frame
-    affine_lcamera_to_psm_one = transformTFToEigen(tfResult_one);
-    affine_lcamera_to_psm_two = transformTFToEigen(tfResult_two);
+    //default transform: need to match this up to camera calibration!
+    if (tferr) {
+        affine_lcamera_to_psm_one.translation() << -0.155, -0.03265, 0.0;
+        Eigen::Vector3d nvec, tvec, bvec;
+        nvec << -1, 0, 0;
+        tvec << 0, 1, 0;
+        bvec << 0, 0, -1;
+        Eigen::Matrix3d R;
+        R.col(0) = nvec;
+        R.col(1) = tvec;
+        R.col(2) = bvec;
+        affine_lcamera_to_psm_one.linear() = R;
+        affine_lcamera_to_psm_two.linear() = R;
+        affine_lcamera_to_psm_two.translation() << 0.145, -0.03265, 0.0;
+        ROS_WARN("using default transform");
+    } else {
+
+        ROS_INFO("tf is good");
+
+        //affine_lcamera_to_psm_one is the position/orientation of psm1 base frame w/rt left camera link frame
+        // need to extend this to camera optical frame
+        affine_lcamera_to_psm_one = transformTFToEigen(tfResult_one);
+        affine_lcamera_to_psm_two = transformTFToEigen(tfResult_two);
+    }
     ROS_INFO("transform from left camera to psm one:");
     cout << affine_lcamera_to_psm_one.linear() << endl;
     cout << affine_lcamera_to_psm_one.translation().transpose() << endl;
@@ -103,7 +126,7 @@ int main(int argc, char** argv) {
     //needlePlanner.set_grab_needle_plus_minus_z(GRASP_W_NEEDLE_NEGATIVE_GRIPPER_Z);
     //needlePlanner.compute_grasp_transform();
 
-    double ang_to_exit, phi_x, phi_y;
+    double ang_to_exit, phi_x, phi_y,tilt;
     Eigen::Vector3d nvec_tissue;
     vector <int> valid_ik_samps;
     while (ros::ok()) {
@@ -112,8 +135,12 @@ int main(int argc, char** argv) {
         cout << "enter needle-grasp phi_y: ";
         cin >> phi_y;
         needlePlanner.compute_grasp_transform(phi_x, phi_y);
+        cout<< "enter tilt of needle z-axis w/rt tissue: ";
+        cin>> tilt;
+        needlePlanner.set_psi_needle_axis_tilt_wrt_tissue(tilt);
+        
         for (ang_to_exit = 0; ang_to_exit < 6.28; ang_to_exit += 1.0) {
-            cout << "angle to exit pt: " << ang_to_exit << endl;
+            cout << "angle to exit pt on tissue surface: " << ang_to_exit << endl;
             //cin>>ang_to_exit;
             nvec_tissue << cos(ang_to_exit), sin(ang_to_exit), 0.0;
             exit_pt = entrance_pt + nvec_tissue;
@@ -131,42 +158,42 @@ int main(int argc, char** argv) {
             q_vec1.resize(7);
             valid_ik_samps.clear();
             for (int i = 0; i < nposes; i++) {
-                ROS_INFO("pose %d", i);
+                if(test_debug) ROS_INFO("pose %d", i);
                 affine_pose = gripper_affines_wrt_camera[i];
-                cout << affine_pose.linear() << endl;
-                cout << "origin: " << affine_pose.translation().transpose() << endl;
+                if(test_debug) cout << affine_pose.linear() << endl;
+                if(test_debug) cout << "origin: " << affine_pose.translation().transpose() << endl;
                 affine_gripper_wrt_base_frame = affine_lcamera_to_psm_one.inverse() * affine_pose;
-                ROS_INFO("pose %d w/rt PSM1 base:", i);
-                cout << affine_gripper_wrt_base_frame.linear() << endl;
-                cout << "origin: " << affine_gripper_wrt_base_frame.translation().transpose() << endl;
+                if(test_debug) ROS_INFO("pose %d w/rt PSM1 base:", i);
+                if(test_debug) cout << affine_gripper_wrt_base_frame.linear() << endl;
+                if(test_debug) cout << "origin: " << affine_gripper_wrt_base_frame.translation().transpose() << endl;
                 if (ik_solver.ik_solve(affine_gripper_wrt_base_frame)) { //convert desired pose into equiv joint displacements
                     valid_ik_samps.push_back(1);
                     vetted_gripper_affines_wrt_camera.push_back(affine_pose); //accept this one
                     q_vec1 = ik_solver.get_soln();
                     q_vec1(6) = 0.0;
-                    cout << "qvec1: " << q_vec1.transpose() << endl;
-                    ROS_INFO("FK of IK soln: ");
+                    if(test_debug) cout << "qvec1: " << q_vec1.transpose() << endl;
+                    if(test_debug) ROS_INFO("FK of IK soln: ");
                     affine_gripper_wrt_base_fk = davinci_fwd_solver.fwd_kin_solve(q_vec1);
-                    cout << "affine linear (R): " << endl;
-                    cout << affine_gripper_wrt_base_fk.linear() << endl;
-                    cout << "origin: ";
-                    cout << affine_gripper_wrt_base_fk.translation().transpose() << endl;
+                    if(test_debug) cout << "affine linear (R): " << endl;
+                    if(test_debug) cout << affine_gripper_wrt_base_fk.linear() << endl;
+                    if(test_debug) cout << "origin: ";
+                    if(test_debug) cout << affine_gripper_wrt_base_fk.translation().transpose() << endl;
                     origin_err = affine_gripper_wrt_base_frame.translation() - affine_gripper_wrt_base_fk.translation();
                     R_err = affine_gripper_wrt_base_frame.linear() - affine_gripper_wrt_base_fk.linear();
-                    ROS_WARN("error test: %f", origin_err.norm());
-                    cout << "IK/FK origin err: " << origin_err.transpose() << endl;
-                    cout << "R err: " << endl;
-                    cout << R_err << endl;
+                    if(test_debug) ROS_WARN("error test: %f", origin_err.norm());
+                    if(test_debug) cout << "IK/FK origin err: " << origin_err.transpose() << endl;
+                    if(test_debug) cout << "R err: " << endl;
+                    if(test_debug) cout << R_err << endl;
                 } else {
-                    ROS_WARN("GRIPPER 1: NO VALID IK SOLN!!");
+                    if(test_debug) ROS_WARN("GRIPPER 1: NO VALID IK SOLN!!");
                     valid_ik_samps.push_back(0);
                 }
             } //end loop through needle-drive poses
-            cout<<"valid samples status:"<<endl;
-            for (int i=0;i<valid_ik_samps.size();i++) {
-                cout<<valid_ik_samps[i]<<"  ";
+            cout << "valid samples status:" << endl;
+            for (int i = 0; i < valid_ik_samps.size(); i++) {
+                cout << valid_ik_samps[i] << "  ";
             }
-            cout<<endl;
+            cout << endl;
         } //end loop ang_to_exit
         needlePlanner.write_needle_drive_affines_to_file(vetted_gripper_affines_wrt_camera);
     }

@@ -106,8 +106,8 @@ NeedlePlanner::NeedlePlanner() {
     //put O and R0 into an affine for initial pose of needle w/rt tissue frame
     affine_init_needle_frame_wrt_tissue_.linear() = R0_needle_wrt_tissue_;
     affine_init_needle_frame_wrt_tissue_.translation() = O_needle_wrt_tissue_;
-    ROS_INFO("FIXED: initial affine_needle_frame_wrt_tissue_");
-    print_affine(affine_init_needle_frame_wrt_tissue_);      
+    //ROS_INFO("INIT: initial affine_needle_frame_wrt_tissue_");
+    //print_affine(affine_init_needle_frame_wrt_tissue_);      
    
     //next two transforms are fixed during needle driving; they
     // describe how the needle is held by the gripper
@@ -160,11 +160,11 @@ void NeedlePlanner::compute_grasp_transform() {
     R_needle_frame_wrt_grasp_frame_.col(2) = bvec_needle_wrt_grasp_frame_;
     affine_needle_frame_wrt_grasp_frame_.linear() = R_needle_frame_wrt_grasp_frame_; 
     affine_needle_frame_wrt_grasp_frame_.translation() = O_needle_frame_wrt_grasp_frame_;
-    ROS_INFO("FIXED: affine_needle_frame_wrt_grasp_frame_");
-    print_affine(affine_needle_frame_wrt_grasp_frame_);    
+    if(debug_needle_print) ROS_INFO("FIXED: affine_needle_frame_wrt_grasp_frame_");
+    if(debug_needle_print) print_affine(affine_needle_frame_wrt_grasp_frame_);    
     affine_needle_frame_wrt_gripper_frame_ = affine_grasp_frame_wrt_gripper_frame_*affine_needle_frame_wrt_grasp_frame_;
-    ROS_INFO("FIXED: affine_needle_frame_wrt_gripper_frame_");
-    print_affine(affine_needle_frame_wrt_gripper_frame_);      
+    if(debug_needle_print) ROS_INFO("FIXED: affine_needle_frame_wrt_gripper_frame_");
+    if(debug_needle_print) print_affine(affine_needle_frame_wrt_gripper_frame_);      
     
 }
 
@@ -192,8 +192,8 @@ void  NeedlePlanner::compute_grasp_transform(double phi_x,double phi_y) {
     affine_needle_frame_wrt_gripper_frame_.linear() = R_N_wrt_G;
     O_N_wrt_G = R_N_wrt_G*O0_N_wrt_G_;
     affine_needle_frame_wrt_gripper_frame_.translation() = O_N_wrt_G;
-    ROS_INFO("FIXED: affine_needle_frame_wrt_gripper_frame_");
-    print_affine(affine_needle_frame_wrt_gripper_frame_);  
+    if(debug_needle_print) ROS_INFO("FIXED: affine_needle_frame_wrt_gripper_frame_");
+    if(debug_needle_print) print_affine(affine_needle_frame_wrt_gripper_frame_);  
 }
 
 //function to compute affine_tissue_frame_wrt_camera_frame_
@@ -222,8 +222,8 @@ void NeedlePlanner::compute_tissue_frame_wrt_camera(Eigen::Vector3d entrance_pt,
     R_tissue_frame_wrt_camera_frame_.col(2)=bvec_tissue_frame_wrt_camera_;
     affine_tissue_frame_wrt_camera_frame_.linear() = R_tissue_frame_wrt_camera_frame_;
     affine_tissue_frame_wrt_camera_frame_.translation() = entrance_pt;
-    cout<<"FIXED: affine_tissue_frame_wrt_camera_frame_"<<endl;
-    print_affine(affine_tissue_frame_wrt_camera_frame_);    
+    if(debug_needle_print) cout<<"FIXED: affine_tissue_frame_wrt_camera_frame_"<<endl;
+    if(debug_needle_print) print_affine(affine_tissue_frame_wrt_camera_frame_);    
     
 }
 
@@ -251,14 +251,24 @@ void NeedlePlanner::compute_needle_drive_gripper_affines(vector <Eigen::Affine3d
     phi_insertion_ = 0.0; //start drive from here   
     affine_needle_frame_wrt_tissue_ = affine_init_needle_frame_wrt_tissue_;     
     
-    double dphi = M_PI/(NSAMPS_DRIVE_PLAN-1);
+    //version for 90-deg drive only ********
+    double dphi = M_PI/(2.0*(NSAMPS_DRIVE_PLAN-1));  //M_PI/(NSAMPS_DRIVE_PLAN-1);
     Eigen::Vector3d kvec_needle;
-    kvec_needle = affine_needle_frame_wrt_tissue_.linear().col(2); //z-axis of needle frame
+    //kvec_needle = affine_needle_frame_wrt_tissue_.linear().col(2); //z-axis of needle frame
+    
     Eigen::Matrix3d Rot_needle;
     Eigen::Matrix3d R0_needle_wrt_tissue_ = affine_needle_frame_wrt_tissue_.linear(); //update this, in case user changed init needle pose
-    cout<<"kvec_needle="<<kvec_needle.transpose()<<endl;
-    cout<<"R0 needle:"<<endl;
-    cout<<R0_needle_wrt_tissue_<<endl;
+    //rotate the needle about the tissue-frame x-axis to tilt the needle bvec:
+    affine_needle_frame_wrt_tissue_.linear() = Rotx(psi_needle_axis_tilt_wrt_tissue_)*R0_needle_wrt_tissue_;
+    R0_needle_wrt_tissue_= affine_needle_frame_wrt_tissue_.linear();
+    kvec_needle = affine_needle_frame_wrt_tissue_.linear().col(2);
+    if(debug_needle_print) cout<<"kvec_needle="<<kvec_needle.transpose()<<endl;
+    if(debug_needle_print) cout<<"R0 needle:"<<endl;
+    
+    Eigen::Vector3d needle_origin;
+    needle_origin = affine_needle_frame_wrt_tissue_.translation();
+    affine_needle_frame_wrt_tissue_.translation() = Rotx(psi_needle_axis_tilt_wrt_tissue_)*needle_origin;
+    if(debug_needle_print) cout<<affine_needle_frame_wrt_tissue_.linear()<<endl;
 
     for (int ipose=0;ipose<NSAMPS_DRIVE_PLAN;ipose++) {
         //Roty_needle = Roty(-phi_insertion_); //rotate about tissue-frame -y axis
@@ -267,8 +277,8 @@ void NeedlePlanner::compute_needle_drive_gripper_affines(vector <Eigen::Affine3d
         //R_needle_wrt_tissue_ = Roty_needle*R0_needle_wrt_tissue_; //update rotation of needle drive
         R_needle_wrt_tissue_ = Rot_needle*R0_needle_wrt_tissue_; //update rotation of needle drive
         
-        cout<<"R_needle w/rt tissue:"<<endl;
-        cout<<R_needle_wrt_tissue_<<endl;
+        if(debug_needle_print) cout<<"R_needle w/rt tissue:"<<endl;
+        if(debug_needle_print) cout<<R_needle_wrt_tissue_<<endl;
         //need to check these transforms...
         affine_needle_frame_wrt_tissue_.linear() = R_needle_wrt_tissue_;
         //ROS_INFO("affine_needle_frame_wrt_tissue_");
@@ -276,8 +286,8 @@ void NeedlePlanner::compute_needle_drive_gripper_affines(vector <Eigen::Affine3d
         
         affine_gripper_frame_wrt_tissue_ = 
                  affine_needle_frame_wrt_tissue_*affine_needle_frame_wrt_gripper_frame_.inverse();
-        ROS_INFO("affine_gripper_frame_wrt_tissue_");
-        print_affine(affine_gripper_frame_wrt_tissue_);
+        if(debug_needle_print) ROS_INFO("affine_gripper_frame_wrt_tissue_");
+        if(debug_needle_print) print_affine(affine_gripper_frame_wrt_tissue_);
         
         //affine_needle_frame_wrt_camera_ = affine_tissue_frame_wrt_camera_frame_.inverse()*affine_needle_frame_wrt_tissue_;  
         //ROS_INFO("affine_needle_frame_wrt_camera_");
@@ -287,8 +297,8 @@ void NeedlePlanner::compute_needle_drive_gripper_affines(vector <Eigen::Affine3d
                 affine_tissue_frame_wrt_camera_frame_*affine_gripper_frame_wrt_tissue_;
 
 
-        ROS_INFO("affine_gripper_frame_wrt_camera_frame_");
-        print_affine(affine_gripper_frame_wrt_camera_frame_);        
+        if(debug_needle_print) ROS_INFO("affine_gripper_frame_wrt_camera_frame_");
+        if(debug_needle_print) print_affine(affine_gripper_frame_wrt_camera_frame_);        
         gripper_affines_wrt_camera.push_back(affine_gripper_frame_wrt_camera_frame_);
         
                 phi_insertion_+=dphi; 
@@ -308,8 +318,8 @@ Eigen::Matrix3d NeedlePlanner::Rotx(double phi) {
     Rx(2,0) = 0.0;
     Rx(2,1) = sin(phi);
     Rx(2,2) = cos(phi);
-    cout<<"Rotx:"<<endl;
-    cout<<Rx<<endl;
+    if(debug_needle_print) cout<<"Rotx:"<<endl;
+    if(debug_needle_print) cout<<Rx<<endl;
     return Rx;    
 }
 
@@ -324,8 +334,8 @@ Eigen::Matrix3d NeedlePlanner::Rotz(double phi) {
     Rz(2,0) = 0.0;
     Rz(2,1) = 0.0;
     Rz(2,2) = 1.0;
-    cout<<"Rotz:"<<endl;
-    cout<<Rz<<endl;
+    if(debug_needle_print) cout<<"Rotz:"<<endl;
+    if(debug_needle_print) cout<<Rz<<endl;
     return Rz;
 }
 

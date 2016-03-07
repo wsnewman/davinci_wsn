@@ -1,0 +1,29 @@
+at joint-states = 0 (except prismatic, q2 = 0.1), 
+have (w/rt PSM1):
+ *shaft points down, inserted below portal (legal pose)
+ *gripper points down, i.e. no wrist bend, no fingers bend
+ *last two joint axes (wrist and jaws) are horizontal, with
+   jaws-axis pointing (+/-)forward and wrist-bend axis pointing left-right
+ *gripper-z axis points down; gripper x axis points front/back
+ 
+ per tf: 
+ 
+ using q_vec =      0.10006   1.9123e-10  3.93197e-12 -2.09965e-12 -6.76081e-12  2.49918e-09            0
+ WHY???  looks like d2 is is in the wrong place!!
+ 
+  INFO] [1456843803.145077081, 327.328000000]: gripper tip frame  one_tool_tip_link per tf:
+affine linear (R): 
+-7.34648e-06           1 4.37349e-06
+          1 7.34642e-06 1.46901e-05
+1.46901e-05  4.3736e-06          -1
+origin: 2.38355e-06 8.70564e-07    -0.10376
+
+note: one_psm_base_link has z "up" but x-axis to its "right" (and y "forward")
+In this pose, gripper tool-tip frame has z "down" (= - bvec_psm_one_base)
+  and x "forward" (= tvec_psm_one_base)
+  
+reported orientation of tool-tip w/rt one_psm_base_link:
+z_tip = [0,0,-1] (correct--antiparallel)
+x_tip = [0,1,0] (correct--"forward", parallel to tvec_psm_one_base)
+origin: (0,0,-0.1): correct: gripper tip is 0.1m "below" portal  
+

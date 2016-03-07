@@ -17,7 +17,7 @@ bool Davinci_fwd_solver::get_jnt_val_by_name(string jnt_name,sensor_msgs::JointS
         if (jnt_name.compare(jointState.name[ijnt])==0) {
             // found a name match!
             qval= jointState.position[ijnt];
-            ROS_INFO("found name match for %s at position %d, jnt val = %f",jnt_name.c_str(),ijnt,qval);
+            if(debug_print) ROS_INFO("found name match for %s at position %d, jnt val = %f",jnt_name.c_str(),ijnt,qval);
             return true;
         }
     }
@@ -149,7 +149,7 @@ void Davinci_fwd_solver::convert_qvec_to_DH_vecs(const Vectorq7x1& q_vec) {
 
     dvals_DH_vec_(2)+=q_vec(2);
     //ROS_INFO("q_vec(2), dvals_DH_vec_(2) = %f, %f",q_vec(2),dvals_DH_vec_(2));
-    ROS_INFO("using DH theta1, theta2, d3 = %f %f %f", thetas_DH_vec_(0),thetas_DH_vec_(1),dvals_DH_vec_(2));
+    if(debug_print) ROS_INFO("using DH theta1, theta2, d3 = %f %f %f", thetas_DH_vec_(0),thetas_DH_vec_(1),dvals_DH_vec_(2));
 
 }
 //    Eigen::VectorXd thetas_DH_vec_,dvals_DH_vec_;
@@ -303,7 +303,7 @@ Davinci_IK_solver::Davinci_IK_solver() {
     //ROS_INFO("Davinci_IK_solver constructor");
     min_dist_O4_to_gripper_tip_ = sqrt(gripper_jaw_length*gripper_jaw_length 
              + dist_from_wrist_bend_axis_to_gripper_jaw_rot_axis*dist_from_wrist_bend_axis_to_gripper_jaw_rot_axis);
-    ROS_INFO("min_dist_O4_to_gripper_tip_=%f",min_dist_O4_to_gripper_tip_);
+    if(debug_print) ROS_INFO("min_dist_O4_to_gripper_tip_=%f",min_dist_O4_to_gripper_tip_);
 }
 
 //accessor function to get all solutions
@@ -390,14 +390,14 @@ Eigen::Vector3d Davinci_IK_solver::compute_w_from_tip(Eigen::Affine3d affine_gri
 
   z_parallel = z_perp.cross(p_hat_O_O5); // O5 - O_0 is same as O5
   double mag_z_perp_cross_O5 = z_parallel.norm();
-  cout<<"zvec_5: "<<zvec_5.transpose()<<endl;
-  cout<<"p_hat_O5: "<<p_hat_O_O5.transpose()<<endl;
-  ROS_WARN("mag_z_perp_cross_O5=%f",mag_z_perp_cross_O5);
+  //cout<<"zvec_5: "<<zvec_5.transpose()<<endl;
+  //cout<<"p_hat_O5: "<<p_hat_O_O5.transpose()<<endl;
+  if(debug_print) ROS_WARN("mag_z_perp_cross_O5=%f",mag_z_perp_cross_O5);
   z_parallel = z_parallel/mag_z_perp_cross_O5;
   //cout<<"z_parallel: "<<z_parallel.transpose()<<endl;
   xvec_5 = -z_perp.cross(z_parallel); // could be + or -  ?
   xvec_5 = xvec_5/(xvec_5.norm()); // should not be necessary--already unit length
-  cout<<"xvec_5: "<<xvec_5.transpose()<<endl;
+  //cout<<"xvec_5: "<<xvec_5.transpose()<<endl;
   
   
   //should get gripper-jaw angle from gripper z_des and xvec_5
@@ -410,7 +410,7 @@ Eigen::Vector3d Davinci_IK_solver::compute_w_from_tip(Eigen::Affine3d affine_gri
   origin_4b = origin_5+dist_from_wrist_bend_axis_to_gripper_jaw_rot_axis*xvec_5;
   double dist_O4a_gripper_tip = (O_tip-origin_4a).norm();
   double dist_O4b_gripper_tip = (O_tip-origin_4b).norm();
-  cout<<"dist_O4a_gripper_tip="<<dist_O4a_gripper_tip<<"; dist_O4b_gripper_tip="<<dist_O4b_gripper_tip<<endl;
+  if(debug_print) cout<<"dist_O4a_gripper_tip="<<dist_O4a_gripper_tip<<"; dist_O4b_gripper_tip="<<dist_O4b_gripper_tip<<endl;
   //if ((dist_O4a_gripper_tip<min_dist_O4_to_gripper_tip_)&&(dist_O4b_gripper_tip<min_dist_O4_to_gripper_tip_)) {
   //    ROS_WARN("BOTH 04 options too close to gripper tip!");
   //}
@@ -464,7 +464,7 @@ bool Davinci_IK_solver::fit_joints_to_range(Vectorq7x1 &qvec) {
             if (q>q_upper_limits[i]) does_fit=false;
         }
         if (!does_fit) {
-            ROS_WARN("IK err: jnt %d;  lower lim: %f; upper lim: %f desired val = %f;",
+            if(debug_print) ROS_WARN("IK err: jnt %d;  lower lim: %f; upper lim: %f desired val = %f;",
                     i,q_lower_limits[i],q_upper_limits[i],q);
         }
         qvec[i] = q;
@@ -493,8 +493,8 @@ int Davinci_IK_solver::ik_solve(Eigen::Affine3d const& desired_hand_pose) // sol
    des_tip_origin = desired_hand_pose.translation();
    double tool_tip_z_des = des_tip_origin(2);
    if (tool_tip_z_des>0.0) {
-       ROS_WARN("requested tool tip height above the portal!");
-       cout<<"tool_tip_z_des: "<<tool_tip_z_des<<endl;
+       if(debug_print) ROS_WARN("requested tool tip height above the portal!");
+       if(debug_print) cout<<"tool_tip_z_des: "<<tool_tip_z_des<<endl;
        return 0; //no solns
    }
    //check if O5 is above the portal:
@@ -502,8 +502,8 @@ int Davinci_IK_solver::ik_solve(Eigen::Affine3d const& desired_hand_pose) // sol
    zvec_tip_wrt_base= R_tip_wrt_base.col(2); 
    O_5_wrt_base = des_tip_origin - zvec_tip_wrt_base*gripper_jaw_length;
    if (O_5_wrt_base(2)>0.0) {
-       ROS_WARN("requested jaw axis height above the portal!");
-       cout<<"O_5_wrt_base: "<<O_5_wrt_base.transpose()<<endl;
+       if(debug_print) ROS_WARN("requested jaw axis height above the portal!");
+       if(debug_print) cout<<"O_5_wrt_base: "<<O_5_wrt_base.transpose()<<endl;
        return 0; //no solns      
    }
    //test if gripper z-axis implies excessive wrist bend:
@@ -514,7 +514,7 @@ int Davinci_IK_solver::ik_solve(Eigen::Affine3d const& desired_hand_pose) // sol
    //can still violate wrist-bend>pi/2 and pass this test
    double projection_gripper_zvec_onto_O5_vec = zvec_tip_wrt_base.dot(O_5_wrt_base);
    if (projection_gripper_zvec_onto_O5_vec<= 0.0) {
-       ROS_WARN("requested gripper z-vec points towards portal--excessive wrist bend required");
+       if(debug_print) ROS_WARN("requested gripper z-vec points towards portal--excessive wrist bend required");
        return 0; //no solns   
    }
    //; // by definition of tip frame
@@ -522,7 +522,7 @@ int Davinci_IK_solver::ik_solve(Eigen::Affine3d const& desired_hand_pose) // sol
    zvec5_wrt_base = -R_tip_wrt_base.col(0); // gripper x-axis is same as z5 
    double mag_z5xO5 = (zvec5_wrt_base.cross(O_5_wrt_base)).norm();
    if (mag_z5xO5 < dist_from_wrist_bend_axis_to_gripper_jaw_rot_axis) {
-       ROS_WARN("mag_z5xO5 =%f < L_w_to_gripperJaw_axis; --> excessive wrist bend",mag_z5xO5);
+       if(debug_print) ROS_WARN("mag_z5xO5 =%f < L_w_to_gripperJaw_axis; --> excessive wrist bend",mag_z5xO5);
        return 0;
    }
    
@@ -535,23 +535,23 @@ int Davinci_IK_solver::ik_solve(Eigen::Affine3d const& desired_hand_pose) // sol
    //next step: get theta1, theta2, d3 soln from wrist position:
    q123 = q123_from_wrist(w_wrt_base);
    w_fk_test = compute_fk_wrist(q123);
-   cout<<"w_wrt_base: "<<w_wrt_base.transpose()<<endl;
-   cout<<"w_fk_test :"<<w_fk_test.transpose()<<endl;
-   cout<<"w_err: "<<(w_wrt_base-w_fk_test).norm()<<endl;
+   if(debug_print) cout<<"w_wrt_base: "<<w_wrt_base.transpose()<<endl;
+   if(debug_print) cout<<"w_fk_test :"<<w_fk_test.transpose()<<endl;
+   if(debug_print) cout<<"w_err: "<<(w_wrt_base-w_fk_test).norm()<<endl;
    //cout<<"q123: "<<q123.transpose()<<endl;
    compute_q456(q123,z_vec4,desired_hand_pose);
    
  
    //DEBUG:
    //test this soln:
-   cout<<"SOLN: "<<endl;
+   if(debug_print) cout<<"SOLN: "<<endl;
    affine_test_fk= fwd_kin_solve(q_vec_soln_);
-   cout<<"soln: "<<q_vec_soln_.transpose()<<endl;
+   if(debug_print) cout<<"soln: "<<q_vec_soln_.transpose()<<endl;
    //if (!fit_joints_to_range(q_vec_soln_)) ROS_WARN("joint range violation");   
    //cout<<"fk soln: "<<endl;
    //cout<<"gripper origin: "<<affine_test_fk.translation().transpose()<<endl;
    err=(affine_test_fk.translation()-desired_hand_pose.translation()).norm();
-   ROS_WARN("gripper origin err: %f",err);
+   if(debug_print) ROS_WARN("gripper origin err: %f",err);
    //cout<<"Rotation:"<<endl;
    //cout<<affine_test_fk.linear()<<endl;
    //cout<<"Rotation err:"<<endl;

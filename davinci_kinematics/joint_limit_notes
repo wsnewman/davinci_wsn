@@ -1,0 +1,7 @@
+joint limit notes:
+command +/-1 rad to jnt 0 may be OK
+jnt1: +/- 0.7 rad
+jnt2: (d3 = prismatic jnt): 0.01 to 0.23 m
+jnt3:  +/- 2.25 rad
+jnt4:  +/- 1.57 rad
+jnt5:  +/- 1.39 rad

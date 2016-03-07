@@ -204,9 +204,9 @@ int main(int argc, char** argv)
         // something odd in above: does not seem to wait for 5 seconds, but returns rapidly if server not running
 
 
-        if (!server_exists) {
-            ROS_WARN("could not connect to server; quitting");
-            return 0; // bail out; optionally, could print a warning message and retry
+        while (!server_exists) {
+            ROS_WARN("could not connect to server; retrying");
+            server_exists = action_client.waitForServer(ros::Duration(5.0));
         }
         //server_exists = action_client.waitForServer(); //wait forever 
         

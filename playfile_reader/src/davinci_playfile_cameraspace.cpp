@@ -320,23 +320,32 @@ int main(int argc, char** argv) {
         cout<<"des_gripper_affine1.linear: "<<endl;
         cout<<des_gripper_affine1.linear()<<endl;
         cout<<"des_gripper_affine1 origin: "<<des_gripper_affine1.translation().transpose()<<endl;
-        ik_solver.ik_solve(des_gripper_affine1); //convert desired pose into equiv joint displacements
-        q_vec1 = ik_solver.get_soln(); 
-        q_vec1(6) = gripper_angs1[ipose];
-        cout<<"qvec1: "<<q_vec1.transpose()<<endl;
-        ROS_INFO("FK of IK soln: ");
-        affine_gripper_wrt_base = davinci_fwd_solver.fwd_kin_solve(q_vec1);
-        cout<<"affine linear (R): "<<endl;
-        cout<<affine_gripper_wrt_base.linear()<<endl;
-        cout<<"origin: ";
-        cout<<affine_gripper_wrt_base.translation().transpose()<<endl;
+        if (ik_solver.ik_solve(des_gripper_affine1)) { //convert desired pose into equiv joint displacements
+                q_vec1 = ik_solver.get_soln(); 
+                q_vec1(6) = gripper_angs1[ipose];
+                cout<<"qvec1: "<<q_vec1.transpose()<<endl;
+                ROS_INFO("FK of IK soln: ");
+                affine_gripper_wrt_base = davinci_fwd_solver.fwd_kin_solve(q_vec1);
+                cout<<"affine linear (R): "<<endl;
+                cout<<affine_gripper_wrt_base.linear()<<endl;
+                cout<<"origin: ";
+                cout<<affine_gripper_wrt_base.translation().transpose()<<endl;
+        }
+        else {
+            ROS_WARN("GRIPPER 1: NO VALID IK SOLN!!");
+        }
 
         des_gripper_affine2 = affine_lcamera_to_psm_two.inverse()*gripper2_affines[ipose]; //express in psm2 base frame
-        ik_solver.ik_solve(des_gripper_affine2); //convert desired pose into equiv joint displacements
-        q_vec2 = ik_solver.get_soln();  
-        q_vec2(6) = gripper_angs2[ipose];
-        cout<<"qvec2: "<<q_vec2.transpose()<<endl;        
-        //repackage q's into a trajectory;
+        if (ik_solver.ik_solve(des_gripper_affine2)) { //convert desired pose into equiv joint displacements
+                q_vec2 = ik_solver.get_soln();  
+                q_vec2(6) = gripper_angs2[ipose];
+                cout<<"qvec2: "<<q_vec2.transpose()<<endl;        
+                //repackage q's into a trajectory;
+        }
+        else
+        {
+            ROS_WARN("NO VALID GRIPPER 2 IK!");
+        }
         for (int i=0;i<7;i++) {
             trajectory_point.positions[i] = q_vec1(i);
             trajectory_point.positions[i+7] = q_vec2(i);  

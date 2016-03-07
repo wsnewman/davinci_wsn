@@ -1,0 +1,106 @@
+IK:
+given T_Gripper/Base,
+  *can immediately get O_5/B and zvec_5/B
+  
+  *direction of nvec_5/B is known to +/-
+  *O_4/B = O_5/B - nvec_5/B*wristlen (wristlen is an "a" parameter of DH: DH_a5)
+  
+  have 2 choices for O_4_wrt_base
+  
+  could examine both solns...O_4a, O_4b w/ +/- nvec_5/B
+  
+  choose CLOSER of O_4a, O_4b (to origin=portal).  Case of O_4 is not reachable...
+  BUT it might still be the correct sign for the user's request.
+  
+  Test O_4_closer to see if it works...
+  if nvec_5 is correct sign, then zvec_4 = -(zvec_5.cross(xvec_5));
+  
+looks like q123 = ik123(wrist) works--regardless of any of the above.
+
+here is a case where none of the wrist options works:
+note: dist O4 to gripper tip must be >0 case of q6=pi/2
+--> dist = sqrt(a5^2 + jaw_length^2)
+= sqrt(0.0091^2 + 0.0102^2) = 0.01367 = d_O4_gripper_tip_min
+-----------------------------------------------------------
+[ INFO] [1456672864.344382356, 888.242000000]: pose 5
+-0.678943 -0.678943  0.279415
+ 0.197577  0.197577   0.96017
+-0.707107 -0.707107         0
+origin: -0.096665 0.0542369 0.0846697
+[ INFO] [1456672864.344547953, 888.242000000]: pose 5 w/rt PSM1 base:
+   0.678945    0.678945   -0.279419
+   0.197574    0.197574    0.960169
+   0.707106    0.707106 8.08016e-06
+origin: -0.0583354  0.0868829 -0.0846698
+[ WARN] [1456672864.344668800, 888.242000000]: mag_z_perp_cross_O5=0.762583
+dist_O4a_gripper_tip=0.00394699; dist_O4b_gripper_tip=0.0189241
+w_wrt_base: -0.0555228  0.0683343 -0.0821877
+w_fk_test :-0.0555228  0.0683343 -0.0821877
+w_err: 2.50185e-17
+SOLN 1: 
+[ INFO] [1456672864.345330900, 888.243000000]: using theta1, theta2, d3 = -0.594135 0.967518 0.120446
+soln: -0.594135 -0.603279  0.136046  0.230461 -0.752394   -1.5708         0
+[ WARN] [1456672864.345481827, 888.243000000]: IK err: jnt 5;  lower lim: -1.390000; upper lim: 1.390000 desired val = -1.570796;
+[ WARN] [1456672864.345502958, 888.243000000]: joint range violation
+[ WARN] [1456672864.345528748, 888.243000000]: gripper origin err: 0.011305
+[ INFO] [1456672864.345997577, 888.244000000]: using theta1, theta2, d3 = -0.594135 0.967518 0.120446
+soln: -0.594135 -0.603279  0.136046  -2.91113  0.752394  -1.59782         0
+[ WARN] [1456672864.346142726, 888.244000000]: IK err: jnt 3;  lower lim: -2.250000; upper lim: 2.250000 desired val = -2.911132;
+[ WARN] [1456672864.346165174, 888.244000000]: IK err: jnt 5;  lower lim: -1.390000; upper lim: 1.390000 desired val = -1.597817;
+[ WARN] [1456672864.346184889, 888.244000000]: joint range violation
+[ WARN] [1456672864.346209269, 888.244000000]: Soln 1 err w/ -zvec:  0.017132
+soln: -0.594135 -0.603279  0.136046  -2.91113  0.752394  -1.59782         0
+ALT SOLN: 
+[ INFO] [1456672864.346822689, 888.245000000]: using theta1, theta2, d3 = -0.566627 0.877405 0.134310
+soln: -0.566627 -0.693391   0.14991   -2.8945  -2.48194   -3.7296         0
+[ WARN] [1456672864.346975460, 888.245000000]: IK err: jnt 3;  lower lim: -2.250000; upper lim: 2.250000 desired val = -2.894503;
+[ WARN] [1456672864.346998387, 888.245000000]: IK err: jnt 4;  lower lim: -1.570000; upper lim: 1.570000 desired val = -2.481936;
+[ WARN] [1456672864.347019295, 888.245000000]: IK err: jnt 5;  lower lim: -1.390000; upper lim: 1.390000 desired val = -3.729595;
+[ WARN] [1456672864.347038434, 888.245000000]: joint range violation
+[ WARN] [1456672864.347069551, 888.245000000]: alt soln gripper origin err: 0.001955
+[ INFO] [1456672864.347526255, 888.245000000]: using theta1, theta2, d3 = -0.566627 0.877405 0.134310
+soln: -0.566627 -0.693391   0.14991  0.247089  -3.80125  -1.08632         0
+[ WARN] [1456672864.347686929, 888.245000000]: IK err: jnt 4;  lower lim: -1.570000; upper lim: 1.570000 desired val = -3.801249;
+[ WARN] [1456672864.347708069, 888.245000000]: joint range violation
+[ WARN] [1456672864.347730641, 888.246000000]: alt soln gripper origin, -zvec err: 0.015049
+[ WARN] [1456672864.347750661, 888.246000000]: IK err: jnt 4;  lower lim: -1.570000; upper lim: 1.570000 desired val = -3.801249;
+[ WARN] [1456672864.347769640, 888.246000000]: GRIPPER 1: NO VALID IK SOLN!!
+
+
+
+---------w/o joint-limit checking...-----------
+[ INFO] [1456676536.120952341, 4460.061000000]: pose 5
+-0.678943 -0.678943  0.279415
+ 0.197577  0.197577   0.96017
+-0.707107 -0.707107         0
+origin: -0.096665 0.0542369 0.0846697
+[ INFO] [1456676536.121048588, 4460.061000000]: pose 5 w/rt PSM1 base:
+   0.678945    0.678945   -0.279419
+   0.197574    0.197574    0.960169
+   0.707106    0.707106 8.08016e-06
+origin: -0.0583354  0.0868829 -0.0846698
+[ WARN] [1456676536.121148792, 4460.061000000]: mag_z_perp_cross_O5=0.762583
+dist_O4a_gripper_tip=0.00394699; dist_O4b_gripper_tip=0.0189241
+w_wrt_base: -0.0555228  0.0683343 -0.0821877
+w_fk_test :-0.0555228  0.0683343 -0.0821877
+w_err: 2.50185e-17
+SOLN 1: 
+[ INFO] [1456676536.121709417, 4460.062000000]: using theta1, theta2, d3 = -0.594135 0.967518 0.120446
+soln: -0.594135 -0.603279  0.136046  0.230461 -0.752394  -1.53355         0
+[ WARN] [1456676536.121917267, 4460.062000000]: gripper origin err: 0.010987
+[ INFO] [1456676536.122321043, 4460.063000000]: using theta1, theta2, d3 = -0.594135 0.967518 0.120446
+soln: -0.594135 -0.603279  0.136046  -2.91113  0.752394  -1.66284         0
+[ WARN] [1456676536.122471627, 4460.063000000]: Soln 1 err w/ -zvec:  0.017483
+soln: -0.594135 -0.603279  0.136046  -2.91113  0.752394  -1.66284         0
+ALT SOLN: 
+[ INFO] [1456676536.122984317, 4460.063000000]: using theta1, theta2, d3 = -0.566627 0.877405 0.134310
+soln: -0.566627 -0.693391   0.14991   -2.8945  -2.48194  -1.63133         0
+[ WARN] [1456676536.123153854, 4460.063000000]: alt soln gripper origin err: 0.016631
+[ INFO] [1456676536.123524149, 4460.064000000]: using theta1, theta2, d3 = -0.566627 0.877405 0.134310
+soln: -0.566627 -0.693391   0.14991  0.247089  -3.80125  -1.54641         0
+[ WARN] [1456676536.123673579, 4460.064000000]: alt soln gripper origin, -zvec err: 0.011512
+[ WARN] [1456676536.123698238, 4460.064000000]: IK err: jnt 4;  lower lim: -1.570000; upper lim: 1.570000 desired val = -3.801249;
+[ WARN] [1456676536.123720268, 4460.064000000]: IK err: jnt 5;  lower lim: -1.390000; upper lim: 1.390000 desired val = -1.546411;
+[ WARN] [1456676536.123739653, 4460.064000000]: GRIPPER 1: NO VALID IK SOLN!!
+
+
