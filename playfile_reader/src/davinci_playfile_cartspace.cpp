@@ -234,7 +234,7 @@ int main(int argc, char** argv) {
         gripper1_affines.push_back(des_gripper_affine1);
         
         R.col(0) = x_vecs2[i];
-        R.col(1) = z_vecs2[i];        
+        R.col(1) = y_vecs2[i];        
         R.col(2) = z_vecs2[i];
         des_gripper_affine2.linear() = R;
         des_gripper_affine2.translation() = tip_origins2[i];  
