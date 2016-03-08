@@ -227,7 +227,7 @@ int main(int argc, char** argv) {
     Eigen::Matrix3d R;
     for (int i=0;i<nposes;i++) {
         R.col(0) = x_vecs1[i];
-        R.col(1) = z_vecs1[i];        
+        R.col(1) = y_vecs1[i];        
         R.col(2) = z_vecs1[i];
         des_gripper_affine1.linear() = R;
         des_gripper_affine1.translation() = tip_origins1[i];
