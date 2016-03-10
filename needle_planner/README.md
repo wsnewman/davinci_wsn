@@ -18,6 +18,8 @@ navigate to the "davinci_playfiles" directory:
 
 Move the robot to retract the grippers to a reasonable starting position:
 `rosrun playfile_reader playfile_cartspace retract.csp`
+or
+`rosrun playfile_reader playfile_jointspace home.jsp`
 
 Generate a needle-drive plan:
 `rosrun needle_planner needle_planner_test_main`

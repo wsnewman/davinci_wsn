@@ -277,7 +277,8 @@ int main(int argc, char** argv) {
                 tfListener.lookupTransform("left_camera_optical_frame","one_psm_base_link",  ros::Time(0), tfResult_one);
                 tfListener.lookupTransform("left_camera_optical_frame","two_psm_base_link",  ros::Time(0), tfResult_two);
             } catch(tf::TransformException &exception) {
-                ROS_ERROR("%s", exception.what());
+                ROS_WARN("%s", exception.what());
+                ROS_WARN("retrying");
                 tferr=true;
                 ros::Duration(0.5).sleep(); // sleep for half a second
                 ros::spinOnce();                
@@ -290,10 +291,10 @@ int main(int argc, char** argv) {
     affine_lcamera_to_psm_two = transformTFToEigen(tfResult_two); 
     ROS_INFO("transform from left camera to psm one:");
     cout<<affine_lcamera_to_psm_one.linear()<<endl;
-    cout<<affine_lcamera_to_psm_one.translation().transpose()<<endl;
+    cout<<"offset: "<<affine_lcamera_to_psm_one.translation().transpose()<<endl;
     ROS_INFO("transform from left camera to psm two:");
     cout<<affine_lcamera_to_psm_two.linear()<<endl;
-    cout<<affine_lcamera_to_psm_two.translation().transpose()<<endl; 
+    cout<<"offset: "<<affine_lcamera_to_psm_two.translation().transpose()<<endl; 
     
     // given a point in optical frame, premultiply by above transforms to express in psm base frames
     
@@ -317,9 +318,9 @@ int main(int argc, char** argv) {
     
     for (int ipose=0;ipose<nposes;ipose++) {   
         des_gripper_affine1 = affine_lcamera_to_psm_one.inverse()*gripper1_affines[ipose];//express in psm base frame
-        cout<<"des_gripper_affine1.linear: "<<endl;
+        cout<<"des_gripper_affine1 orientation w/rt psm1 base: "<<endl;
         cout<<des_gripper_affine1.linear()<<endl;
-        cout<<"des_gripper_affine1 origin: "<<des_gripper_affine1.translation().transpose()<<endl;
+        cout<<"des_gripper_affine1 origin w/rt psm1 base: "<<des_gripper_affine1.translation().transpose()<<endl;
         if (ik_solver.ik_solve(des_gripper_affine1)) { //convert desired pose into equiv joint displacements
                 q_vec1 = ik_solver.get_soln(); 
                 q_vec1(6) = gripper_angs1[ipose];
@@ -336,6 +337,9 @@ int main(int argc, char** argv) {
         }
 
         des_gripper_affine2 = affine_lcamera_to_psm_two.inverse()*gripper2_affines[ipose]; //express in psm2 base frame
+        cout<<"des_gripper_affine2 orientation w/rt psm2 base: "<<endl;
+        cout<<des_gripper_affine2.linear()<<endl;
+        cout<<"des_gripper_affine2 origin w/rt psm2 base: "<<des_gripper_affine2.translation().transpose()<<endl;
         if (ik_solver.ik_solve(des_gripper_affine2)) { //convert desired pose into equiv joint displacements
                 q_vec2 = ik_solver.get_soln();  
                 q_vec2(6) = gripper_angs2[ipose];

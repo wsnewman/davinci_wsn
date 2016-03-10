@@ -80,6 +80,9 @@ public:
     // compute a sequence of gripper poses (w/rt camera frame) for needle driving
     void compute_needle_drive_gripper_affines(vector <Eigen::Affine3d> &gripper_affines_wrt_camera);
     
+    //test fnc--just computes a simple gripper path:
+    void simple_test_gripper_motion(double x, double y, double z, double r,vector <Eigen::Affine3d> &gripper_affines_wrt_camera);
+
     void write_needle_drive_affines_to_file(vector <Eigen::Affine3d> &gripper_affines_wrt_camera);
     double vers(double phi) { return (1.0-cos(phi)); } 
     
