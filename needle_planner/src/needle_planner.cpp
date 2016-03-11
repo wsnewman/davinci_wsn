@@ -134,6 +134,21 @@ NeedlePlanner::NeedlePlanner() {
     compute_grasp_transform();
     R0_N_wrt_G_ = affine_needle_frame_wrt_gripper_frame_.linear(); 
     O0_N_wrt_G_ = affine_needle_frame_wrt_gripper_frame_.translation();
+    
+    //hard-coded camera-to-base transform, useful for simple testing/debugging
+       default_affine_lcamera_to_psm_one_.translation() << -0.155, -0.03265, 0.0;
+        Eigen::Vector3d nvec, tvec, bvec;
+        nvec << -1, 0, 0;
+        tvec << 0, 1, 0;
+        bvec << 0, 0, -1;
+        //Eigen::Matrix3d R;
+        R.col(0) = nvec;
+        R.col(1) = tvec;
+        R.col(2) = bvec;
+        default_affine_lcamera_to_psm_one_.linear() = R;
+        //affine_lcamera_to_psm_two.linear() = R;
+        //affine_lcamera_to_psm_two.translation() << 0.145, -0.03265, 0.0;
+        //ROS_WARN("default camera to PSM1 transform");    
       
 };
 
@@ -319,8 +334,11 @@ void NeedlePlanner::simple_test_gripper_motion(double x, double y, double z, dou
     double dphi = 2.0*M_PI/20.0;
     Eigen::Matrix3d R;
     Eigen::Vector3d nvec,tvec,bvec,tip_pos;
-    bvec<<0,0,1;
-    nvec<<1,0,0;
+    Eigen::Affine3d des_gripper1_wrt_base;
+    //bvec<<0,0,1;
+    //nvec<<1,0,0;
+    bvec<<1,0,0;
+    nvec<<0,1,0;    
     tvec = bvec.cross(nvec);
     R.col(0) = nvec;
     R.col(1) = tvec;
@@ -328,12 +346,22 @@ void NeedlePlanner::simple_test_gripper_motion(double x, double y, double z, dou
     tip_pos<<x,y,z;
     affine_gripper_frame_wrt_camera_frame_.linear()=R;
     gripper_affines_wrt_camera.clear();
+    int nsolns=0;
     for (double phi = 0.0; phi< 2.0*M_PI; phi+=dphi) {
         tip_pos(0) = x+r*cos(phi);
         tip_pos(1) = y+r*sin(phi);
         tip_pos(2) = z; //constant z height
         affine_gripper_frame_wrt_camera_frame_.translation() = tip_pos;
-        gripper_affines_wrt_camera.push_back(affine_gripper_frame_wrt_camera_frame_);
+        //express in psm base frame
+        des_gripper1_wrt_base = default_affine_lcamera_to_psm_one_.inverse()*affine_gripper_frame_wrt_camera_frame_;
+        //try computing IK:
+        cout<<"phi = "<<phi;
+        if (ik_solver_.ik_solve(des_gripper1_wrt_base)) 
+        {  nsolns++;
+           cout<<":  found IK; nsolns = "<<nsolns<<endl;
+           gripper_affines_wrt_camera.push_back(affine_gripper_frame_wrt_camera_frame_);
+        }
+        else cout<<";  NO IK"<<endl;
     }
 }
 
@@ -411,6 +439,7 @@ void NeedlePlanner::print_affine(Eigen::Affine3d affine) {
 }
 
 //this playfile writer example is specialized for needle drive w/ PSM1
+// PSM2 just gets legal, fixed values
 void NeedlePlanner::write_needle_drive_affines_to_file(vector <Eigen::Affine3d> &gripper_affines_wrt_camera) {
   ofstream outfile;
   outfile.open ("gripper_poses_in_camera_coords.csp");

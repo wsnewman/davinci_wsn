@@ -26,7 +26,7 @@
 #include <eigen3/Eigen/src/Geometry/Transform.h>
 #include <sensor_msgs/JointState.h>
 
-bool debug_print=false;
+bool debug_print=true;
 
 using namespace std;
 

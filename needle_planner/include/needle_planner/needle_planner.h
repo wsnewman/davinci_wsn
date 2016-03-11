@@ -21,7 +21,7 @@ bool debug_needle_print=false;
 #include <tf/LinearMath/Vector3.h>
 #include <tf/LinearMath/QuadWord.h>
 #include <eigen3/Eigen/src/Geometry/Transform.h>
-
+#include <davinci_kinematics/davinci_kinematics.h>
 //compute desired gripper frame from desired needle pose w/rt tissue
 // use with: int  ik_solve(Eigen::Affine3d const& desired_hand_pose);
 
@@ -160,7 +160,13 @@ private:
     Eigen::Affine3d affine_needle_frame_wrt_camera_;  //this varies during needle driving    
     //this is the desired result: where should the gripper be to drive the needle
     // follows from affine_needle_frame_wrt_camera_ and grasp transforms
-    Eigen::Affine3d affine_gripper_frame_wrt_camera_frame_;     
+    Eigen::Affine3d affine_gripper_frame_wrt_camera_frame_;    
+    
+    Davinci_fwd_solver davinci_fwd_solver_; //instantiate a forward-kinematics solver    
+    Davinci_IK_solver ik_solver_;
+    //default camera transform: should find actual tf by listening, but this
+    // hard-coded default is useful for simple tests
+    Eigen::Affine3d default_affine_lcamera_to_psm_one_;    
 };
 
 #endif

@@ -12,16 +12,16 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "needle_planner_test_main"); //node name
 
     ros::NodeHandle nh; // create a node handle; need to pass this to the class constructor
-
+        
     double x,y,z,r;
     cout<<"creating test circular motion; enter coords of center of circle, w/rt camera."<<endl;
-    cout<<"enter x (e.g. -0.15):";
+    cout<<"enter x (e.g. -0.1):";
     cin>>x;
     cout<<"enter y (e.g. 0.0):";
     cin>>y;
     cout<<"enter z (e.g. 0.1):";
     cin>>z;
-    cout<<"enter radius of circular path (e.g. 0.03):";
+    cout<<"enter radius of circular path (e.g. 0.01):";
     cin>>r;
     //Eigen::Vector3d entrance_pt,exit_pt,tissue_normal;
     //tissue_normal<<0,0,-1; //antiparallel to optical axis
