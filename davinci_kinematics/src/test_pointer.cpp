@@ -13,7 +13,7 @@ Eigen::Vector3d g_des_point;
 Davinci_fwd_solver g_davinci_fwd_solver; //instantiate a forward-kinematics solver    
 Davinci_IK_solver g_ik_solver;
 Eigen::Affine3d g_des_gripper_affine1, g_des_gripper_affine2;
-Eigen::Affine3d g_default_affine_lcamera_to_psm_one;
+Eigen::Affine3d g_affine_lcamera_to_psm_one;
 Eigen::Affine3d g_des_gripper1_wrt_base; 
 Vectorq7x1 g_q_vec1_start, g_q_vec1_goal, g_q_vec2_start, g_q_vec2_goal;
 
@@ -24,6 +24,21 @@ davinci_traj_streamer::trajGoal g_goal;
 // here is a "goal" object compatible with the server, as defined in example_action_server/action
 davinci_traj_streamer::trajGoal goal;
 
+Eigen::Affine3d transformTFToEigen(const tf::Transform &t) {
+    Eigen::Affine3d e;
+    for (int i = 0; i < 3; i++) {
+        e.matrix()(i, 3) = t.getOrigin()[i];
+        for (int j = 0; j < 3; j++) {
+            e.matrix()(i, j) = t.getBasis()[i][j];
+        }
+    }
+    // Fill in identity in last row
+    for (int col = 0; col < 3; col++)
+        e.matrix()(3, col) = 0;
+    e.matrix()(3, 3) = 1;
+    return e;
+}
+
 void inPointCallback(const geometry_msgs::Point& pt_msg) {
     Eigen::Affine3d des_gripper1_wrt_base;
 
@@ -33,7 +48,7 @@ void inPointCallback(const geometry_msgs::Point& pt_msg) {
     cout << "received des point = " << g_des_point.transpose() << endl;
     g_des_gripper_affine1.translation() = g_des_point;
     //convert this to base coords:
-    g_des_gripper1_wrt_base = g_default_affine_lcamera_to_psm_one.inverse() * g_des_gripper_affine1;
+    g_des_gripper1_wrt_base = g_affine_lcamera_to_psm_one.inverse() * g_des_gripper_affine1;
     //try computing IK:
     if (g_ik_solver.ik_solve(g_des_gripper1_wrt_base)) {
         ROS_INFO("found IK soln");
@@ -83,7 +98,7 @@ int do_inits() {
     g_des_gripper_affine1.translation() = tip_pos; //will change this, but start w/ something legal
 
     //hard-coded camera-to-base transform, useful for simple testing/debugging
-    g_default_affine_lcamera_to_psm_one.translation() << -0.155, -0.03265, 0.0;
+    g_affine_lcamera_to_psm_one.translation() << -0.155, -0.03265, 0.0;
     nvec << -1, 0, 0;
     tvec << 0, 1, 0;
     bvec << 0, 0, -1;
@@ -91,14 +106,14 @@ int do_inits() {
     R.col(0) = nvec;
     R.col(1) = tvec;
     R.col(2) = bvec;
-    g_default_affine_lcamera_to_psm_one.linear() = R;
+    g_affine_lcamera_to_psm_one.linear() = R;
 
     g_q_vec1_start.resize(7);
     g_q_vec1_goal.resize(7);
     g_q_vec2_start.resize(7);
     g_q_vec2_goal.resize(7);
 
-    g_des_gripper1_wrt_base = g_default_affine_lcamera_to_psm_one.inverse() * g_des_gripper_affine1;
+    g_des_gripper1_wrt_base = g_affine_lcamera_to_psm_one.inverse() * g_des_gripper_affine1;
     g_ik_solver.ik_solve(g_des_gripper1_wrt_base); // compute IK:
     g_q_vec1_goal = g_ik_solver.get_soln();
     g_q_vec1_start = g_q_vec1_goal;
@@ -136,6 +151,61 @@ int do_inits() {
     // copy traj to goal:
     g_goal.trajectory = g_des_trajectory;
     g_got_new_pose = true; //send robot to start pose
+    
+     ROS_INFO("getting transforms from camera to PSMs");
+    tf::TransformListener tfListener;
+    tf::StampedTransform tfResult_one, tfResult_two;
+    bool tferr = true;
+    int ntries = 0;
+    ROS_INFO("waiting for tf between base and right_hand...");
+    while (tferr) {
+        if (ntries > 5) break; //give up and accept default after this many tries
+        tferr = false;
+        try {
+            //The direction of the transform returned will be from the target_frame to the source_frame. 
+            //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
+            tfListener.lookupTransform("left_camera_optical_frame", "one_psm_base_link", ros::Time(0), tfResult_one);
+            //tfListener.lookupTransform("left_camera_optical_frame", "two_psm_base_link", ros::Time(0), tfResult_two);
+        } catch (tf::TransformException &exception) {
+            ROS_WARN("%s", exception.what());
+            tferr = true;
+            ros::Duration(0.5).sleep(); // sleep for half a second
+            ros::spinOnce();
+            ntries++;
+        }
+    }
+    //default transform: need to match this up to camera calibration!
+    if (tferr) {
+        g_affine_lcamera_to_psm_one.translation() << -0.155, -0.03265, 0.0;
+        Eigen::Vector3d nvec, tvec, bvec;
+        nvec << -1, 0, 0;
+        tvec << 0, 1, 0;
+        bvec << 0, 0, -1;
+        Eigen::Matrix3d R;
+        R.col(0) = nvec;
+        R.col(1) = tvec;
+        R.col(2) = bvec;
+        g_affine_lcamera_to_psm_one.linear() = R;
+        g_affine_lcamera_to_psm_one.linear() = R;
+        g_affine_lcamera_to_psm_one.translation() << 0.145, -0.03265, 0.0;
+        ROS_WARN("using default transform");
+    } else {
+
+        ROS_INFO("tf is good");
+
+        //affine_lcamera_to_psm_one is the position/orientation of psm1 base frame w/rt left camera link frame
+        // need to extend this to camera optical frame
+        g_affine_lcamera_to_psm_one = transformTFToEigen(tfResult_one);
+        //affine_lcamera_to_psm_two = transformTFToEigen(tfResult_two);
+    }
+    ROS_INFO("transform from left camera to psm one:");
+    cout << g_affine_lcamera_to_psm_one.linear() << endl;
+    cout << g_affine_lcamera_to_psm_one.translation().transpose() << endl;
+    //ROS_INFO("transform from left camera to psm two:");
+    //cout << affine_lcamera_to_psm_two.linear() << endl;
+    //cout << affine_lcamera_to_psm_two.translation().transpose() << endl;    
+    
+    
     ROS_INFO("done w/ inits");
 
     return 0;
