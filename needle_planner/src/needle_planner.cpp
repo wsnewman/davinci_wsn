@@ -396,12 +396,15 @@ void NeedlePlanner::simple_horiz_kvec_motion(Eigen::Vector3d O_needle, double r_
     //double phi_circle = 0.0;
     double dphi = M_PI/40.0;
     Eigen::Matrix3d R,R0;
-    Eigen::Vector3d nvec,tvec,bvec,tip_pos;
+    Eigen::Vector3d nvec,tvec,bvec,bvec0,tip_pos;
     Eigen::Affine3d des_gripper1_wrt_base;
-    //bvec<<0,0,1;
+    bvec0<<1,0,0;//at kvec_yaw=0, set needle axis parallel to camera-frame x-axis
     //nvec<<-1,0,0;
-    bvec<<1,0,0;
-    nvec<<0,0,1;    
+    //bvec<<1,0,0;
+    nvec<<0,0,1;   
+    bvec = Rotz(kvec_yaw)*bvec0; //rotate the needle axis about camera z-axis
+    cout<<"needle z-vec in camera frame: "<<bvec.transpose()<<endl;
+            
     tvec = bvec.cross(nvec);
     R0.col(0) = nvec;
     R0.col(1) = tvec;
@@ -421,19 +424,22 @@ void NeedlePlanner::simple_horiz_kvec_motion(Eigen::Vector3d O_needle, double r_
         //careful here: R0 is R_gripper/camera
         // rotate about the camera-frame x-axis;
         // more generally, rotate about k_vec, expressed in camera coords
-        R = Rotx(phi)*R0; //Rot_k_phi(bvec, phi)*R0;
+        //R = Rotx(phi)*R0; //Rot_k_phi(bvec, phi)*R0;
+        R = Rot_k_phi(bvec, phi)*R0;
         //cout<<"Rotx(phi):"<<endl;
         //cout<<Rotx(phi)<<endl;
-        //cout<<"Rot_k_phi(bvec,phi):"<<endl;
-        //cout<<Rot_k_phi(bvec,phi)<<endl;
+        cout<<"Rot_k_phi(bvec,phi):"<<endl;
+        cout<<Rot_k_phi(bvec,phi)<<endl;
         affine_gripper_frame_wrt_camera_frame_.linear()=R;
         tip_pos=O_needle - r_needle*R.col(1);
         affine_gripper_frame_wrt_camera_frame_.translation() = tip_pos;
-        //cout<<"gripper1 orientation at phi = "<<phi<<endl;
+        cout<<"gripper1 orientation at phi = "<<phi<<endl;
         cout<<affine_gripper_frame_wrt_camera_frame_.linear()<<endl;
-        //cout<<"needle tip: "<<affine_gripper_frame_wrt_camera_frame_.translation().transpose()<<endl;      
+        cout<<"needle tip: "<<affine_gripper_frame_wrt_camera_frame_.translation().transpose()<<endl;      
         //gripper_affines_wrt_camera.push_back(affine_gripper_frame_wrt_camera_frame_);
- 
+        //cout<<"enter 1: ";
+        //int ans;
+        //cin>>ans;
         //express in psm base frame
         des_gripper1_wrt_base = default_affine_lcamera_to_psm_one_.inverse()*affine_gripper_frame_wrt_camera_frame_;
         //try computing IK:

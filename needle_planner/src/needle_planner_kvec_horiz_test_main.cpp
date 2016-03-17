@@ -13,9 +13,11 @@ int main(int argc, char** argv)
 
     ros::NodeHandle nh; // create a node handle; need to pass this to the class constructor
     Eigen::Vector3d O_needle;
-    O_needle<< -0.02,0.004,0.1578;
+    O_needle<< -0.02,0.004,0.1578; //we can hard-code O_needle(2) (z-value) for known tissue height
     double r_needle = 0.012; //0.0254/2.0;
     double kvec_yaw = 0.0;
+    cout<<"enter kvec_yaw: (e.g. 0-2pi): ";
+    cin>>kvec_yaw;
     vector <Eigen::Affine3d> gripper_affines_wrt_camera;  //put answers here  
     
 
