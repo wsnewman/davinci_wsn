@@ -49,6 +49,9 @@ public:
    void set_needle_radius(double r) {needle_radius_ = r; }
    void set_needle_axis_ht (double h) {needle_axis_ht_ = h; }
    void set_psi_needle_axis_tilt_wrt_tissue(double tilt) {psi_needle_axis_tilt_wrt_tissue_ = tilt; }
+   void set_kvec (Eigen::Vector3d kvec) { kvec_needle_ = kvec; }
+   void set_needle_origin (Eigen::Vector3d O_needle) { O_needle_ = O_needle; }
+   
     // result depends on how the gripper is grasping the needle.  This has a default
     // grasp transform, changeable with "set" functions
     //the next 4 fncs change params of the default needle grasp transform
@@ -79,7 +82,9 @@ public:
     //main fnc: given tissue entrance pt, exit pt and surface normal (w/rt camera frame)
     // compute a sequence of gripper poses (w/rt camera frame) for needle driving
     void compute_needle_drive_gripper_affines(vector <Eigen::Affine3d> &gripper_affines_wrt_camera);
-    
+    void simple_compute_needle_drive_gripper_affines(vector <Eigen::Affine3d> &gripper_affines);
+    void simple_horiz_kvec_motion(Eigen::Vector3d O_needle, double r_needle, double kvec_yaw, vector <Eigen::Affine3d> &gripper_affines_wrt_camera);
+
     //test fnc--just computes a simple gripper path:
     void simple_test_gripper_motion(double x, double y, double z, double r,vector <Eigen::Affine3d> &gripper_affines_wrt_camera);
 
@@ -113,7 +118,7 @@ private:
     //next two transforms are fixed during needle driving; they
     // describe how the needle is held by the gripper
     Eigen::Affine3d affine_grasp_frame_wrt_gripper_frame_; 
-    Eigen::Vector3d O_needle_frame_wrt_grasp_frame_;
+    Eigen::Vector3d O_needle_frame_wrt_grasp_frame_, O_needle_; //O_needle is arbitrary frame...e.g. psm1_base
     Eigen::Matrix3d R_needle_frame_wrt_grasp_frame_;
     Eigen::Matrix3d R0_N_wrt_G_; 
     Eigen::Vector3d O0_N_wrt_G_;
@@ -148,6 +153,7 @@ private:
     //  directly above the mid-point between entrance and exit pt; will remain constant during
     // needle driving (in all frames)
     Eigen::Vector3d O_needle_wrt_tissue_; //= (dist_entrance_to_exit_, 0, needle_axis_ht_)
+    Eigen::Vector3d kvec_needle_; // axis of rotation, normal of needle; postive rotation = insertion
     Eigen::Affine3d affine_init_needle_frame_wrt_tissue_; //starting pose of needle
     // variables that evolve during needle driving:    
     // during driving, insertion angle goes from 0 to pi (could shorten this)
