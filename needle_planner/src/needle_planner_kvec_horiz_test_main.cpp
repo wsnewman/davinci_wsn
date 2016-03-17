@@ -19,7 +19,13 @@ int main(int argc, char** argv)
     cout<<"enter kvec_yaw: (e.g. 0-2pi): ";
     cin>>kvec_yaw;
     vector <Eigen::Affine3d> gripper_affines_wrt_camera;  //put answers here  
-    
+    double needle_x,needle_y;
+    cout<<"enter needle center x coord (e.g. -0.02): ";
+    cin>>needle_x;
+    cout<<"enter needle center y coord (e.g. 0.004): ";
+    cin>>needle_y;  
+    O_needle(0) = needle_x;
+    O_needle(1) = needle_y;
 
     ROS_INFO("main: instantiating an object of type NeedlePlanner");
     NeedlePlanner needlePlanner;  
