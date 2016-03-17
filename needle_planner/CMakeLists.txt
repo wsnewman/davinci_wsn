@@ -36,6 +36,7 @@ cs_add_executable(needle_planner_test_main_v3 src/needle_planner_test_main_v3.cp
 #cs_add_executable(needle_planner_test_circle src/needle_planner_test_simple_path.cpp)
 cs_add_executable(simple_needle_planner src/simple_needle_planner_test_main.cpp)
 cs_add_executable(needle_planner_kvec_horiz_test_main src/needle_planner_kvec_horiz_test_main.cpp)
+cs_add_executable(needle_planner_kvec_horiz_test_main_v2 src/needle_planner_kvec_horiz_test_main_v2.cpp)
 #the following is required, if desire to link a node in this package with a library created in this same package
 # edit the arguments to reference the named node and named library within this package
 # target_link_library(example my_lib)
@@ -45,6 +46,8 @@ target_link_libraries(needle_planner_test_main_v3 needle_planner davinci_kinemat
 #target_link_libraries(needle_planner_test_circle needle_planner davinci_kinematics)
 target_link_libraries(simple_needle_planner needle_planner davinci_kinematics)
 target_link_libraries(needle_planner_kvec_horiz_test_main needle_planner davinci_kinematics)
+target_link_libraries(needle_planner_kvec_horiz_test_main_v2 needle_planner davinci_kinematics)
+
 cs_install()
 cs_export()
     
