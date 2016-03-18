@@ -28,3 +28,14 @@ The file "gripper_poses_in_camera_coords.csp" will be created in the current dir
 Try running the needle-drive plan:
 `rosrun playfile_reader playfile_cameraspace gripper_poses_in_camera_coords.csp`
 
+## needle planner example:
+start davinci (or at least a roscore)
+`rosrun needle_planner needle_planner_kvec_horiz_test_main_v3`
+publish an entry point, e.g.:
+`rostopic pub  /thePoint geometry_msgs/Point  '{x: -0.02, y: 0.01, z0.17}' `
+(OR run publish selected points node via rviz w/ tissue surface w/rt DaVinci)
+Observe the result with:
+rostopic echo exit_points
+
+ 
+
