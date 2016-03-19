@@ -77,6 +77,11 @@ public:
     void set_affine_needle_frame_wrt_gripper_frame(Eigen::Affine3d affine)
          {affine_needle_frame_wrt_gripper_frame_ = affine; }
 
+    void set_affine_lcamera_to_psm_one(Eigen::Affine3d affine)
+         {default_affine_lcamera_to_psm_one_ = affine; }   
+    void set_affine_lcamera_to_psm_two(Eigen::Affine3d affine)
+         {default_affine_lcamera_to_psm_two_ = affine; }    
+
     void compute_tissue_frame_wrt_camera(Eigen::Vector3d entrance_pt,
         Eigen::Vector3d exit_pt, Eigen::Vector3d tissue_normal);
     //main fnc: given tissue entrance pt, exit pt and surface normal (w/rt camera frame)
@@ -84,11 +89,15 @@ public:
     void compute_needle_drive_gripper_affines(vector <Eigen::Affine3d> &gripper_affines_wrt_camera);
     void simple_compute_needle_drive_gripper_affines(vector <Eigen::Affine3d> &gripper_affines);
     void simple_horiz_kvec_motion(Eigen::Vector3d O_needle, double r_needle, double kvec_yaw, vector <Eigen::Affine3d> &gripper_affines_wrt_camera);
+    void simple_horiz_kvec_motion_psm2(Eigen::Vector3d O_needle, double r_needle, double kvec_yaw, vector <Eigen::Affine3d> &gripper_affines_wrt_camera);
+
 
     //test fnc--just computes a simple gripper path:
     void simple_test_gripper_motion(double x, double y, double z, double r,vector <Eigen::Affine3d> &gripper_affines_wrt_camera);
 
     void write_needle_drive_affines_to_file(vector <Eigen::Affine3d> &gripper_affines_wrt_camera);
+    void write_psm2_needle_drive_affines_to_file(Eigen::Affine3d gripper_affine_psm1, double squeeze_cmd, vector <Eigen::Affine3d> &psm2_gripper_affines_wrt_camera);
+
     double vers(double phi) { return (1.0-cos(phi)); } 
     
     //some utility functions:
@@ -173,6 +182,7 @@ private:
     //default camera transform: should find actual tf by listening, but this
     // hard-coded default is useful for simple tests
     Eigen::Affine3d default_affine_lcamera_to_psm_one_;    
+    Eigen::Affine3d default_affine_lcamera_to_psm_two_;      
 };
 
 #endif

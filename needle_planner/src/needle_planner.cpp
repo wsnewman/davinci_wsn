@@ -454,6 +454,70 @@ void NeedlePlanner::simple_horiz_kvec_motion(Eigen::Vector3d O_needle, double r_
     }
 }
 
+void NeedlePlanner::simple_horiz_kvec_motion_psm2(Eigen::Vector3d O_needle, double r_needle, double kvec_yaw, vector <Eigen::Affine3d> &gripper_affines_wrt_camera) {
+
+    //double phi_circle = 0.0;
+    double dphi = M_PI/40.0;
+    Eigen::Matrix3d R,R0;
+    Eigen::Vector3d nvec,tvec,bvec,bvec0,tip_pos;
+    Eigen::Affine3d des_gripper1_wrt_base;
+    bvec0<<1,0,0;//at kvec_yaw=0, set needle axis parallel to camera-frame x-axis
+    //nvec<<-1,0,0;
+    //bvec<<1,0,0;
+    nvec<<0,0,1;   
+    bvec = Rotz(kvec_yaw)*bvec0; //rotate the needle axis about camera z-axis
+    //cout<<"needle z-vec in camera frame: "<<bvec.transpose()<<endl;
+            
+    tvec = bvec.cross(nvec);
+    R0.col(0) = nvec;
+    R0.col(1) = tvec;
+    R0.col(2) = bvec;
+    tip_pos=O_needle - r_needle*tvec;
+    affine_gripper_frame_wrt_camera_frame_.translation() = tip_pos;
+    affine_gripper_frame_wrt_camera_frame_.linear()=R0;
+    //cout<<"start gripper1 orientation: "<<endl;
+    //cout<<affine_gripper_frame_wrt_camera_frame_.linear()<<endl;
+    //cout<<"needle tip: "<<affine_gripper_frame_wrt_camera_frame_.translation().transpose()<<endl;
+    gripper_affines_wrt_camera.clear();
+    int nsolns=0;
+    for (double phi = 0.0; phi> -M_PI; phi-=dphi) {
+        //need to rotate gripper frame about camera-frame x-axis;
+        // DO want to describe this as equiv rotation about gripper-frame z-axis
+        
+        //careful here: R0 is R_gripper/camera
+        // rotate about the camera-frame x-axis;
+        // more generally, rotate about k_vec, expressed in camera coords
+        //R = Rotx(phi)*R0; //Rot_k_phi(bvec, phi)*R0;
+        R = Rot_k_phi(bvec, phi)*R0;
+        //cout<<"Rotx(phi):"<<endl;
+        //cout<<Rotx(phi)<<endl;
+        //cout<<"Rot_k_phi(bvec,phi):"<<endl;
+        //cout<<Rot_k_phi(bvec,phi)<<endl;
+        affine_gripper_frame_wrt_camera_frame_.linear()=R;
+        tip_pos=O_needle - r_needle*R.col(1);
+        affine_gripper_frame_wrt_camera_frame_.translation() = tip_pos;
+        //cout<<"gripper1 orientation at phi = "<<phi<<endl;
+        //cout<<affine_gripper_frame_wrt_camera_frame_.linear()<<endl;
+        //cout<<"needle tip: "<<affine_gripper_frame_wrt_camera_frame_.translation().transpose()<<endl;      
+        //gripper_affines_wrt_camera.push_back(affine_gripper_frame_wrt_camera_frame_);
+        //cout<<"enter 1: ";
+        //int ans;
+        //cin>>ans;
+        //express in psm base frame
+        des_gripper1_wrt_base = default_affine_lcamera_to_psm_two_.inverse()*affine_gripper_frame_wrt_camera_frame_;
+        //try computing IK:
+        //cout<<"phi = "<<phi;
+        if (ik_solver_.ik_solve(des_gripper1_wrt_base)) 
+        {  nsolns++;
+           //cout<<":  found IK; nsolns = "<<nsolns<<endl;
+           gripper_affines_wrt_camera.push_back(affine_gripper_frame_wrt_camera_frame_);
+        }
+        //else cout<<";  NO IK"<<endl;
+     
+    }
+}
+
+
 Eigen::Matrix3d NeedlePlanner::Rotx(double phi) {
     Eigen::Matrix3d Rx;
     Rx(0,0) = 1.0; //
@@ -624,6 +688,92 @@ void NeedlePlanner::write_needle_drive_affines_to_file(vector <Eigen::Affine3d> 
  
   outfile.close();
   ROS_INFO("wrote gripper motion plan to file gripper_poses_in_camera_coords.csp");
+}
+
+//this playfile writer example is specialized for needle drive w/ PSM2
+// PSM1 gets fixed values, passed in as gripper_affine_psm1
+//FIX ME
+void NeedlePlanner::write_psm2_needle_drive_affines_to_file(Eigen::Affine3d gripper_affine_psm1, double squeeze_cmd, vector <Eigen::Affine3d> &psm2_gripper_affines_wrt_camera) {
+  ofstream outfile;
+  outfile.open ("psm2_gripper_poses_in_camera_coords.csp");
+  //the following are w/rt to left camera optical frame
+//entries 0-2 = origin of gripper tip (a point mid-way between the gripper jaw tips)
+//entries 3-5 = gripper x-axis direction (x-axis points parallel to gripper-jaw rotation axis; 
+  //y-axis points from fingertip to fingertip)
+//entries 6-8 = z-axis direction for gripper-tip frame (z-axis points from wrist to tip)
+   int nposes = psm2_gripper_affines_wrt_camera.size();
+   if (nposes<1) {
+       ROS_WARN("NO POSES TO SAVE");
+       return;
+   }
+    ROS_INFO("saving computed %d gripper poses w/rt camera",nposes);
+    Eigen::Affine3d affine_pose;
+    
+    Eigen::Vector3d Origin,Origin1_last,Origin2_start,Origin2_last;
+    Eigen::Vector3d Origin2_offset1,Origin2_offset2;
+    Eigen::Matrix3d R,R1_last,R2,R2_out_of_way;
+    Eigen::Vector3d nvec,bvec,nvec1_last,bvec1_last;
+    Eigen::Vector3d nvec2,bvec2;
+    
+    Eigen::Vector3d nvec_needle,bvec_needle,origin_needle, tip_of_needle;
+    Eigen::Vector3d gripper2_grasp_origin,gripper2_pre_grasp_origin,gripper2_out_of_way;
+    Eigen::Vector3d nvec_gripper2,tvec_gripper2,bvec_gripper2;
+    //pose of gripper1 at end of needle drive:
+    Eigen::Affine3d affine_gripper2_frame_wrt_camera_last;
+    Eigen::Affine3d affine_needle_frame_wrt_camera_last;
+    
+    //pose of gripper2 at end of needle drive 
+    affine_gripper2_frame_wrt_camera_last = psm2_gripper_affines_wrt_camera[nposes-1];
+    //T_n/c = T_g/c*T_n/g :  compute needle pose at end of needle drive w/rt camera frame
+    affine_needle_frame_wrt_camera_last = affine_gripper2_frame_wrt_camera_last*
+               affine_needle_frame_wrt_gripper_frame_;
+    // get coordinates of needle tip:
+    nvec_needle = affine_needle_frame_wrt_camera_last.linear().col(0);
+    bvec_needle = affine_needle_frame_wrt_camera_last.linear().col(2);
+    origin_needle = affine_needle_frame_wrt_camera_last.translation();
+    tip_of_needle = origin_needle+needle_radius_*nvec_needle;
+    
+    //define gripper2 goal as: origin of gripper tip + grasp_depth_ forward along bvec_needle 
+    //puts tip in center of claw--should leave more grasp length along needle body--fix later
+    gripper2_grasp_origin = tip_of_needle + grasp_depth_*bvec_needle; 
+    //compute approach pose, back up along gripper z-axis to make room for gripper 1 needle drive
+    gripper2_pre_grasp_origin = gripper2_grasp_origin-0.03*bvec_needle; 
+    gripper2_out_of_way<<0.14,       -0.03,        0.07;
+    //specify the gripper-2 orientation:
+    bvec_gripper2 = bvec_needle; //grasp needle w/ gripper z-axis parallel to needle z-axis 
+    tvec_gripper2 = nvec_needle; //gripper y-axis is "pinch" direction--align this with needle x-axis
+    nvec_gripper2 = tvec_gripper2.cross(bvec_gripper2);
+    R2.col(2) =  bvec_gripper2; 
+    R2.col(1) =  tvec_gripper2;  
+    R2.col(0) = nvec_gripper2; 
+    nvec2<<1,0,0;
+    bvec2<<0,0,1;
+    
+    double t=4; 
+    double dt= 1.0; //time step between poses
+    for (int i=0;i<nposes;i++) {
+        Origin = psm2_gripper_affines_wrt_camera[i].translation();
+        outfile<<Origin(0)<<", "<<Origin(1)<<", "<<Origin(2)<<",     ";
+        R = psm2_gripper_affines_wrt_camera[i].linear();
+        nvec= R.col(0);
+        bvec= R.col(2);
+        outfile<<nvec(0)<<", "<<nvec(1)<<", "<<nvec(2)<<",     ";
+        outfile<<bvec(0)<<", "<<bvec(1)<<", "<<bvec(2)<<",  0,   ";
+        //now, gripper 2:
+        /*
+        outfile<<gripper2_pre_grasp_origin(0)<<", "<<gripper2_pre_grasp_origin(1)<<", "<<gripper2_pre_grasp_origin(2)<<",     ";
+        outfile<<nvec_gripper2(0)<<", "<<nvec_gripper2(1)<<", "<<nvec_gripper2(2)<<",     ";
+        outfile<<bvec_gripper2(0)<<", "<<bvec_gripper2(1)<<", "<<bvec_gripper2(2)<<",  0.5,   "<<t<<endl;  
+         * */
+
+        outfile<<gripper2_out_of_way(0)<<", "<<gripper2_out_of_way(1)<<", "<<gripper2_out_of_way(2)<<",     ";
+        outfile<<nvec2(0)<<", "<<nvec2(1)<<", "<<nvec2(2)<<",     ";
+        outfile<<bvec2(0)<<", "<<bvec2(1)<<", "<<bvec2(2)<<",  0.0,   "<<t<<endl;          
+        t+=dt;
+    }    
+ 
+  outfile.close();
+  ROS_INFO("wrote gripper motion plan to file psm2_gripper_poses_in_camera_coords.csp");
 }
 
 
