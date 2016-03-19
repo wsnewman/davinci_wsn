@@ -46,6 +46,20 @@
       <origin rpy="0.0 1.5708 1.5708" xyz="0.0029 0.00 0.5"/>
   </joint>
 
+ <joint name="endo_joint" type="fixed">
+      <parent link="camera"/>
+      <child link="davinci_endo"/>
+      <origin rpy="3.14 0 0" xyz="0 0 0.5"/>
+  </joint>
+
+  <link name="davinci_endo">
+    <inertial>
+      <mass value="1e-5" />
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6" />
+    </inertial>
+  </link>
+
   <link name="left_camera_link">
     <visual>
       <origin xyz="0 0 0.0" rpy="0 0 0"/>

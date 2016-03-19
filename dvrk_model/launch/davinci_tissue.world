@@ -1,0 +1,56 @@
+<?xml version="1.0" ?>
+<sdf version="1.4">
+  <world name="default">
+    <include>
+      <uri>model://ground_plane</uri>
+    </include>
+
+    <include>
+      <uri>model://sun</uri>
+    </include>
+
+   <include>
+        <uri>model://small_tissue</uri>
+         <pose>0.0 0 0.815 0 0 0</pose>
+    </include>
+            
+     <include>
+        <uri>model://red_marker</uri>
+         <pose>0.015 0.010 0.830 0 0 0</pose>
+    </include>
+
+    <include>
+        <uri>model://blue_marker</uri>
+         <pose>-0.015 0.010 0.830 0 0 0</pose>
+    </include>
+    <include>
+        <uri>model://green_marker</uri>
+         <pose>-0.015 -0.010 0.830 0 0 0</pose>
+    </include>
+
+    <!--<include>
+        <uri>model://needle_r</uri>
+         <pose>0.005 -0.001 0.820 1.57 0 -1.57</pose>
+    </include>-->
+
+
+
+    <!--include>
+        <uri>model://davinci_table</uri>
+        <pose>0.0 0 0 0 -0 0</pose>
+    </include>
+    <include>
+        <uri>model://1mm_bar</uri>
+         <pose>0.0 0 0.7 0 0 0</pose>
+    </include-->
+  
+            
+    <physics type="ode">
+      <gravity xyz="0 0 -0.1"/>
+      <real_time_update_rate>1000.0</real_time_update_rate>
+      <gravity>
+	0.0 0.0 -9.81
+      </gravity>
+    </physics>
+  </world>
+</sdf>
