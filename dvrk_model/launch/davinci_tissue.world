@@ -11,10 +11,10 @@
 
    <include>
         <uri>model://small_tissue</uri>
-         <pose>0.0 0 0.795 0 0 0</pose>
+         <pose>0.0 0 0.775 0 0 0</pose>
     </include>
             
-     <include>
+     <!--include>
         <uri>model://red_marker</uri>
          <pose>0.015 0.010 0.810 0 0 0</pose>
     </include>
@@ -26,7 +26,7 @@
     <include>
         <uri>model://green_marker</uri>
          <pose>-0.015 -0.010 0.810 0 0 0</pose>
-    </include>
+    </include-->
 
     <!--<include>
         <uri>model://needle_r</uri>
