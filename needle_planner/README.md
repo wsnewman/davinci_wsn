@@ -32,7 +32,7 @@ Try running the needle-drive plan:
 start davinci (or at least a roscore)
 `rosrun needle_planner needle_planner_kvec_horiz_test_main_v3`
 publish an entry point, e.g.:
-`rostopic pub  /thePoint geometry_msgs/Point  '{x: -0.02, y: 0.01, z0.17}' `
+`rostopic pub  /thePoint geometry_msgs/Point  '{x: 0, y: 0, z: 0.12}' `
 (OR run publish selected points node via rviz w/ tissue surface w/rt DaVinci)
 Observe the result with:
 rostopic echo exit_points

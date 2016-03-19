@@ -630,11 +630,12 @@ void NeedlePlanner::write_needle_drive_affines_to_file(vector <Eigen::Affine3d> 
     Eigen::Vector3d nvec2,bvec2;
     
     Eigen::Vector3d nvec_needle,bvec_needle,origin_needle, tip_of_needle;
-    Eigen::Vector3d gripper2_grasp_origin,gripper2_pre_grasp_origin,gripper2_out_of_way;
+    Eigen::Vector3d gripper2_grasp_origin,gripper2_pre_grasp_origin,gripper2_out_of_way,gripper2_out_of_way_wrt_camera;
     Eigen::Vector3d nvec_gripper2,tvec_gripper2,bvec_gripper2;
     //pose of gripper1 at end of needle drive:
     Eigen::Affine3d affine_gripper1_frame_wrt_camera_last;
     Eigen::Affine3d affine_needle_frame_wrt_camera_last;
+    Eigen::Affine3d psm2_nom_wrt_base2,psm2_nom_wrt_camera;
     
     //pose of gripper1 at end of needle drive 
     affine_gripper1_frame_wrt_camera_last = gripper_affines_wrt_camera[nposes-1];
@@ -652,16 +653,36 @@ void NeedlePlanner::write_needle_drive_affines_to_file(vector <Eigen::Affine3d> 
     gripper2_grasp_origin = tip_of_needle + grasp_depth_*bvec_needle; 
     //compute approach pose, back up along gripper z-axis to make room for gripper 1 needle drive
     gripper2_pre_grasp_origin = gripper2_grasp_origin-0.03*bvec_needle; 
-    gripper2_out_of_way<<0.14,       -0.03,        0.07;
+    gripper2_out_of_way<< 0.0, 0.0, -0.02; //w/rt base, so make z value negative;  0.14,       -0.03,        0.07;
+    Eigen::Matrix3d R2_diag = Eigen::MatrixXd::Identity(3,3);
+    R2_diag(2,2) = -1; // gripper z axis antiparallel to base-frame z-axis
+    R2_diag(1,1) = -1;
+    cout<<"R2_diag:"<<endl;
+    cout<<R2_diag<<endl;
+            
+    psm2_nom_wrt_base2.linear() = R2_diag;
+    psm2_nom_wrt_base2.translation() = gripper2_out_of_way;
+    
+    cout<<"affine_lcamera_to_psm_two_:"<<endl;
+    cout<<default_affine_lcamera_to_psm_two_.linear()<<endl;
+    cout<<"origin: "<<default_affine_lcamera_to_psm_two_.translation().transpose();
+    
+    psm2_nom_wrt_camera = default_affine_lcamera_to_psm_two_*psm2_nom_wrt_base2;
+    //psm2_nom_wrt_camera.linear()= R2_diag;
+     cout<<"psm2_nom_wrt_camera:"<<endl;
+    cout<<psm2_nom_wrt_camera.linear()<<endl;
+    cout<<"origin: "<<psm2_nom_wrt_camera.translation().transpose();   
+    
     //specify the gripper-2 orientation:
-    bvec_gripper2 = bvec_needle; //grasp needle w/ gripper z-axis parallel to needle z-axis 
-    tvec_gripper2 = nvec_needle; //gripper y-axis is "pinch" direction--align this with needle x-axis
-    nvec_gripper2 = tvec_gripper2.cross(bvec_gripper2);
-    R2.col(2) =  bvec_gripper2; 
-    R2.col(1) =  tvec_gripper2;  
-    R2.col(0) = nvec_gripper2; 
-    nvec2<<1,0,0;
-    bvec2<<0,0,1;
+    bvec_gripper2 = psm2_nom_wrt_camera.linear().col(2); 
+    tvec_gripper2 = psm2_nom_wrt_camera.linear().col(1);  //gripper y-axis is "pinch" direction--align this with needle x-axis
+    nvec_gripper2 = psm2_nom_wrt_camera.linear().col(0); 
+    gripper2_out_of_way_wrt_camera = psm2_nom_wrt_camera.translation();
+    //R2.col(2) =  bvec_gripper2; 
+    //R2.col(1) =  tvec_gripper2;  
+    //R2.col(0) = nvec_gripper2; 
+    //nvec2<<1,0,0;
+    //bvec2<<0,0,1;
     
     double t=4; 
     double dt= 1.0; //time step between poses
@@ -680,9 +701,9 @@ void NeedlePlanner::write_needle_drive_affines_to_file(vector <Eigen::Affine3d> 
         outfile<<bvec_gripper2(0)<<", "<<bvec_gripper2(1)<<", "<<bvec_gripper2(2)<<",  0.5,   "<<t<<endl;  
          * */
 
-        outfile<<gripper2_out_of_way(0)<<", "<<gripper2_out_of_way(1)<<", "<<gripper2_out_of_way(2)<<",     ";
-        outfile<<nvec2(0)<<", "<<nvec2(1)<<", "<<nvec2(2)<<",     ";
-        outfile<<bvec2(0)<<", "<<bvec2(1)<<", "<<bvec2(2)<<",  0.0,   "<<t<<endl;          
+        outfile<<gripper2_out_of_way_wrt_camera(0)<<", "<<gripper2_out_of_way_wrt_camera(1)<<", "<<gripper2_out_of_way_wrt_camera(2)<<",     ";
+        outfile<<nvec_gripper2(0)<<", "<<nvec_gripper2(1)<<", "<<nvec_gripper2(2)<<",     ";
+        outfile<<bvec_gripper2(0)<<", "<<bvec_gripper2(1)<<", "<<bvec_gripper2(2)<<",  0.0,   "<<t<<endl;          
         t+=dt;
     }    
  

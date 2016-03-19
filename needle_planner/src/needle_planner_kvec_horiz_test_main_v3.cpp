@@ -7,13 +7,140 @@
  * Extend: accept needle entry point; compute needle drives for pivots about entry point
  *  need to specify height of needle center above tissue
  * This version: subscribes to "thePoint" topic
+ * can manually test with: rostopic pub  /thePoint geometry_msgs/Point  '{x: 0, y: 0, z: 0.12}'
+ * NOTE: this depends on positioning of the arms, whether this is reachable
+ * 
  */
 #include <needle_planner/needle_planner.h>
+
+Eigen::Affine3d g_affine_lcamera_to_psm_one, g_affine_lcamera_to_psm_two; //, affine_gripper_wrt_base;
+Eigen::Affine3d g_psm1_start_pose,g_psm2_start_pose;
+Eigen::Affine3d transformTFToEigen(const tf::Transform &t) {
+    Eigen::Affine3d e;
+    for (int i = 0; i < 3; i++) {
+        e.matrix()(i, 3) = t.getOrigin()[i];
+        for (int j = 0; j < 3; j++) {
+            e.matrix()(i, j) = t.getBasis()[i][j];
+        }
+    }
+    // Fill in identity in last row
+    for (int col = 0; col < 3; col++)
+        e.matrix()(3, col) = 0;
+    e.matrix()(3, 3) = 1;
+    return e;
+}
+
+void init_poses() {
+   ROS_INFO("getting transforms from camera to PSMs");
+    tf::TransformListener tfListener;
+    tf::StampedTransform tfResult_one, tfResult_two;
+    
+    bool tferr = true;
+    int ntries = 0;
+    ROS_INFO("waiting for tf between base and camera...");
+    while (tferr) {
+        if (ntries > 5) break; //give up and accept default after this many tries
+        tferr = false;
+        try {
+            //The direction of the transform returned will be from the target_frame to the source_frame. 
+            //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
+            tfListener.lookupTransform("left_camera_optical_frame", "one_psm_base_link", ros::Time(0), tfResult_one);
+            tfListener.lookupTransform("left_camera_optical_frame", "two_psm_base_link", ros::Time(0), tfResult_two);
+        } catch (tf::TransformException &exception) {
+            ROS_WARN("%s", exception.what());
+            tferr = true;
+            ros::Duration(0.5).sleep(); // sleep for half a second
+            ros::spinOnce();
+            ntries++;
+        }
+    }
+    //default transform: need to match this up to camera calibration!
+    if (tferr) {
+        g_affine_lcamera_to_psm_one.translation() << -0.155, -0.03265, 0.0;
+        Eigen::Vector3d nvec, tvec, bvec;
+        nvec << -1, 0, 0;
+        tvec << 0, 1, 0;
+        bvec << 0, 0, -1;
+        Eigen::Matrix3d R;
+        R.col(0) = nvec;
+        R.col(1) = tvec;
+        R.col(2) = bvec;
+        g_affine_lcamera_to_psm_one.linear() = R;
+        g_affine_lcamera_to_psm_two.linear() = R;
+        g_affine_lcamera_to_psm_two.translation() << 0.145, -0.03265, 0.0;
+        ROS_WARN("using default transform");
+    } else {
+
+        ROS_INFO("tf is good");
+
+        //g_affine_lcamera_to_psm_one is the position/orientation of psm1 base frame w/rt left camera link frame
+        // need to extend this to camera optical frame
+        g_affine_lcamera_to_psm_one = transformTFToEigen(tfResult_one);
+        g_affine_lcamera_to_psm_two = transformTFToEigen(tfResult_two);
+    }
+    ROS_INFO("transform from left camera to psm one:");
+    cout << g_affine_lcamera_to_psm_one.linear() << endl;
+    cout << g_affine_lcamera_to_psm_one.translation().transpose() << endl;
+    ROS_INFO("transform from left camera to psm two:");
+    cout << g_affine_lcamera_to_psm_two.linear() << endl;
+    cout << g_affine_lcamera_to_psm_two.translation().transpose() << endl;  
+    
+    //now get initial poses:
+    ROS_INFO("waiting for tf between base and grippers...");
+    while (tferr) {
+        if (ntries > 5) break; //give up and accept default after this many tries
+        tferr = false;
+        try {
+            //The direction of the transform returned will be from the target_frame to the source_frame. 
+            //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
+            tfListener.lookupTransform("left_camera_optical_frame", "one_tool_tip_link", ros::Time(0), tfResult_one);
+            tfListener.lookupTransform("left_camera_optical_frame", "two_tool_tip_link", ros::Time(0), tfResult_two);
+        } catch (tf::TransformException &exception) {
+            ROS_WARN("%s", exception.what());
+            tferr = true;
+            ros::Duration(0.5).sleep(); // sleep for half a second
+            ros::spinOnce();
+            ntries++;
+        }
+    }
+    //default start pose, if can't get tf:
+    if (tferr) {
+        g_psm1_start_pose.translation() << -0.02, 0, 0.04;
+        g_psm2_start_pose.translation() << 0.02, 0, 0.04;
+        Eigen::Vector3d nvec, tvec, bvec;
+        nvec << -1, 0, 0;
+        tvec << 0, 1, 0;
+        bvec << 0, 0, -1;
+        Eigen::Matrix3d R;
+        R.col(0) = nvec;
+        R.col(1) = tvec;
+        R.col(2) = bvec;
+        g_psm1_start_pose.linear() = R;
+        g_psm2_start_pose.linear() = R;
+        ROS_WARN("using default start poses");
+    } else {
+
+        ROS_INFO("tf is good");
+
+        //g_affine_lcamera_to_psm_one is the position/orientation of psm1 base frame w/rt left camera link frame
+        // need to extend this to camera optical frame
+        g_psm1_start_pose = transformTFToEigen(tfResult_one);
+        g_psm2_start_pose = transformTFToEigen(tfResult_two);
+    }
+    ROS_INFO("psm1 gripper start pose:");
+    cout << g_psm1_start_pose.linear() << endl;
+    cout << g_psm1_start_pose.translation().transpose() << endl;
+    ROS_INFO("psm2 gripper start pose:");
+    cout << g_psm2_start_pose.linear() << endl;
+    cout << g_psm2_start_pose.translation().transpose() << endl;      
+    
+}
+
 //example use of needle-planner library
 const double r_needle = 0.012; //0.0254/2.0;
 const double needle_height_above_tissue = r_needle / sqrt(2.0);
 const double d_to_exit_pt = 2 * r_needle / sqrt(2.0); // only for chosen needle ht
-const double z_tissue = 0.17; // HARD CODED; USE ACTUAL TISSUE Z, WRT CAMERA
+const double z_tissue = 0.10; // HARD CODED; USE ACTUAL TISSUE Z, WRT CAMERA
 Eigen::Vector3d g_O_entry_point;
 bool g_got_new_entry_point = false;
 
@@ -65,7 +192,11 @@ int main(int argc, char** argv) {
 
     ROS_INFO("main: instantiating an object of type NeedlePlanner");
     NeedlePlanner needlePlanner;
-
+    init_poses();
+     // set camera-to-base transforms:
+    needlePlanner.set_affine_lcamera_to_psm_one(g_affine_lcamera_to_psm_one);
+    needlePlanner.set_affine_lcamera_to_psm_two(g_affine_lcamera_to_psm_two);   
+    
     while (ros::ok()) {
         if (g_got_new_entry_point) {
             g_got_new_entry_point = false;
@@ -86,7 +217,7 @@ int main(int argc, char** argv) {
                 needlePlanner.simple_horiz_kvec_motion(O_needle, r_needle, kvec_yaw, gripper_affines_wrt_camera);
                 int nposes = gripper_affines_wrt_camera.size();
                 ROS_WARN("at kvec_yaw = %f, computed %d needle-drive gripper poses ", kvec_yaw, nposes);
-                if (nposes >= 40) {
+                if (nposes >= 38) {
                     exitPoint.x = O_exit_pt(0);
                     exitPoint.y = O_exit_pt(1);
                     exitPoint.z = O_exit_pt(2);

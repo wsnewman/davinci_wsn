@@ -185,6 +185,8 @@ int main(int argc, char** argv)
     
     ros::Subscriber js_sub= nh.subscribe("/davinci/joint_states",1,jsCallback); 
     
+    init_poses();
+    
     while (!g_got_callback) {
         ros::spinOnce();
     }
@@ -198,14 +200,17 @@ int main(int argc, char** argv)
     cout<<"enter kvec_yaw: (e.g. 0-2pi): ";
     cin>>kvec_yaw;
     vector <Eigen::Affine3d> gripper_affines_wrt_camera;  //put answers here  
-    double needle_x,needle_y;
+    double needle_x,needle_y,needle_z;
     cout<<"enter needle center x coord (e.g. -0.02): ";
     cin>>needle_x;
     cout<<"enter needle center y coord (e.g. 0.004): ";
     cin>>needle_y;  
+    cout<<"enter needle center z coord (e.g. 0.092): ";
+    cin>>needle_y;      
     O_needle(0) = needle_x;
     O_needle(1) = needle_y;
-
+    O_needle(2) = needle_z;
+    
     ROS_INFO("main: instantiating an object of type NeedlePlanner");
     NeedlePlanner needlePlanner;  
     // set camera-to-base transforms:
