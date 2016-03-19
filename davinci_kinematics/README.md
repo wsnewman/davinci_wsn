@@ -21,4 +21,16 @@ insertion, tool-shaft rotation, wrist-bend and gripper-jaw tilt.  The DavinciJoi
 commands to a vector that includes controlling the closed-chain joints.  Values published are illustrated by rviz.
 
 ## Running tests/demos
+The "test_pointer" code is meant to test hand/eye coordination.  It subscribes to topic "thePoint", computes IK for the right gripper, 
+and sends the psm1 gripper to point straight down with its tip at the specified coordinates.  This can be run with:
+
+`roslaunch dvrk_model wsn_davinci_gazebo.launch`
+
+`rosrun davinci_traj_streamer davinci_traj_interpolator_as`
+
+`rosrun davinci_kinematics test_pointer`
+
+Then, you can test points manually, e.g. with:
+
+ `rostopic pub  /thePoint geometry_msgs/Point  '{x: -0.1, y: 0.0, z: 0.1}'`
     
