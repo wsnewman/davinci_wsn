@@ -1,0 +1,34 @@
+merged davinci launch; 3/19/16, wsn
+
+Launch DaVinci simulation with:
+
+roslaunch dvrk_model derlin_davinci_gazebo.launch
+
+   uses: davinci_tissue.world (sets tissue and color models; sets gravity to -0.1)
+   and: wsn_both_psms_rotated.urdf.xacro  (rotated psm bases)
+
+note: rosrun davinci_traj_streamer davinci_traj_interpolator_as is now auto-launched by above launch file, 
+  so no need to run this node.
+
+To change the height of the tissue, edit file:  davinci_tissue.world
+
+To change the positions/angles of the psm's, edit the file:
+  wsn_both_psms_rotated.urdf.xacro, specifically:
+
+  <xacro:psm_sca 
+      prefix="one_"
+      parent_link="camera"
+      xyz="-0.02 0.05 0.5" rpy="0.0 0.0 3.927"/>
+  <xacro:psm_sca 
+      prefix="two_"
+      parent_link="camera"
+      xyz="0.02 0.05 0.5" rpy="0.0 0.0 2.356"/>
+
+To test motions of the gripper and hand/eye calibration:
+run the node:
+rosrun davinci_kinematics test_pointer
+
+to manually enter a goal point, do (e.g.):
+
+rostopic pub  /thePoint geometry_msgs/Point  '{x: 0, y: 0.0, z: 0.089}'
+
