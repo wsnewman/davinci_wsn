@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <robot name="dvrk_psm" xmlns:xacro="http://www.ros.org/wiki/xacro">
- 
+
   <!-- This file contains different tool urdf -->
   <xacro:include filename="$(find dvrk_model)/model/common.urdf.xacro"/>
   <xacro:property name="GazeboRed"       value="1 0 0 1"/>
