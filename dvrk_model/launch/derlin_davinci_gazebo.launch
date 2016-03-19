@@ -43,9 +43,14 @@
 <!--node pkg="tf" type="static_transform_publisher" name="camera_rgb_frame" args="0.000 -0.045 0.000 0.000 0.000 0.000 1.000 $(arg camera_name)/camera_link $(arg camera_name)/camera_rgb_frame 100"/-->
 
 <!--node pkg="tf" type="static_transform_publisher" name="camera_rgb_optical_frame" args="0.000 -0.045 0.000 -0.500 0.500 -0.500 0.500  $(arg camera_name)/camera_link $(arg camera_name)/camera_rgb_optical_frame 100"/-->
+ 
+<!-- start the trajectory interpolation action server-->
+<node name="davinci_traj_interpolator_as" pkg="davinci_traj_streamer" type="davinci_traj_interpolator_as" ></node>
 
- <!-- load the model "tissue" into Gazebo;         <uri>model://small_tissue</uri>
-         <pose>0.0 0 0.815 0 0 0</pose> -->
-<node name="spawn_sdf" pkg="gazebo_ros" type="spawn_model" args="-file $(find cwru_davinci_models)models/small_tissue/model-1_4.sdf -sdf -model tissue -z 0.815" />   
+ <include file="$(find dvrk_model)/launch/davinci_endo_sim.launch">
+ </include> 
+
+  <include file="$(find dvrk_model)/launch/davinci_endo_view.launch">
+ </include> 
 
 </launch>

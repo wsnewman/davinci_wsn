@@ -11,21 +11,21 @@
 
    <include>
         <uri>model://small_tissue</uri>
-         <pose>0.0 0 0.815 0 0 0</pose>
+         <pose>0.0 0 0.795 0 0 0</pose>
     </include>
             
      <include>
         <uri>model://red_marker</uri>
-         <pose>0.015 0.010 0.830 0 0 0</pose>
+         <pose>0.015 0.010 0.810 0 0 0</pose>
     </include>
 
     <include>
         <uri>model://blue_marker</uri>
-         <pose>-0.015 0.010 0.830 0 0 0</pose>
+         <pose>-0.015 0.010 0.810 0 0 0</pose>
     </include>
     <include>
         <uri>model://green_marker</uri>
-         <pose>-0.015 -0.010 0.830 0 0 0</pose>
+         <pose>-0.015 -0.010 0.810 0 0 0</pose>
     </include>
 
     <!--<include>
@@ -43,14 +43,11 @@
         <uri>model://1mm_bar</uri>
          <pose>0.0 0 0.7 0 0 0</pose>
     </include-->
-  
+    <!--gravity>0 0 -0.1</gravity-->
             
     <physics type="ode">
-      <gravity xyz="0 0 -0.1"/>
+    <gravity>0 0 -0.1</gravity>
       <real_time_update_rate>1000.0</real_time_update_rate>
-      <gravity>
-	0.0 0.0 -9.81
-      </gravity>
     </physics>
   </world>
 </sdf>
