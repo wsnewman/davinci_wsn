@@ -204,7 +204,7 @@ int main(int argc, char** argv) {
             g_got_new_entry_point = false;
         //compute O_needle from entry and exit points:
         O_needle = 0.5 * (g_O_entry_point + g_O_exit_point);
-        O_needle(2) += DEFAULT_NEEDLE_AXIS_HT;
+        O_needle(2) -= DEFAULT_NEEDLE_AXIS_HT;
 
 
         in_to_out_vec = g_O_exit_point - g_O_entry_point;

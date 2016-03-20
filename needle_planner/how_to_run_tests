@@ -1,0 +1,22 @@
+roslaunch dvrk_model derlin_davinci_gazebo.launch
+
+select point via Peng's node, or manually publish a point, e.g.:
+  rostopic pub  /thePoint geometry_msgs/Point  '{x: 0, y: 0, z: 0.12}'
+
+planner node will respond;  can watch topic with: 
+  rostopic echo exit_point_array
+
+send data to trajectory planner; should be done by Peng's node with selection of exit point;
+ publishes 2 points (entrance and exit) using geometry_msgs/Polygon to topic "/entrance_and_exit_pts"
+ 
+ Can test manually by running this example (test) node:
+
+rosrun needle_planner needle_plan_horiz_kvec
+(will prompt for entrance-pt coords and for kvec_yaw; will compute exit pt and publish entrance/exit pts)
+e.g., enter: x=0, y=0, z=0.12, yaw= 0.7
+
+Can then try the result by running:
+rosrun playfile_reader playfile_cameraspace gripper_poses_in_camera_coords.csp
+
+
+
