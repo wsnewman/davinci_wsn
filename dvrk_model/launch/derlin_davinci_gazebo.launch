@@ -45,12 +45,18 @@
 <!--node pkg="tf" type="static_transform_publisher" name="camera_rgb_optical_frame" args="0.000 -0.045 0.000 -0.500 0.500 -0.500 0.500  $(arg camera_name)/camera_link $(arg camera_name)/camera_rgb_optical_frame 100"/-->
  
 <!-- start the trajectory interpolation action server-->
-<node name="davinci_traj_interpolator_as" pkg="davinci_traj_streamer" type="davinci_traj_interpolator_as" ></node>
+<node name="davinci_traj_interpolator_as" pkg="davinci_traj_streamer" type="davinci_traj_interpolator_as" output="screen"></node>
 
  <include file="$(find dvrk_model)/launch/davinci_endo_sim.launch">
  </include> 
 
   <include file="$(find dvrk_model)/launch/davinci_endo_view.launch">
  </include> 
+
+<!-- launch rviz using a specific config file -->
+ <node pkg="rviz" type="rviz" name="rviz" args="-d $(find dvrk_model)/launch/davinci.rviz"/>
+
+<!-- launch rqt_reconfigure to set disparity params: had some trouble with this; race condition?  -->
+ <!--node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure"/-->
 
 </launch>
