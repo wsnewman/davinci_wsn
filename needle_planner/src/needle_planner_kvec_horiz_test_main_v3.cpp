@@ -1,5 +1,7 @@
 /* 
  * File:   needle_planner_kvec_horiz_test_main_v2.cpp
+ * executable is called "needle_planner_exit_point_evaluator"
+ * Listens for entry points, and publishes candidate exit points on topic: exit_point_array
  * Author: wsn
  *
  * Created Mar 17, 2016
