@@ -35,7 +35,7 @@ const int GRASP_W_NEEDLE_NEGATIVE_GRIPPER_Y=-1;
 const int GRASP_W_NEEDLE_POSITIVE_GRIPPER_Z=1; //grab needle w/ needle z-axis parallel to gripper z-axis
 const int GRASP_W_NEEDLE_NEGATIVE_GRIPPER_Z=-1; // needle z antiparallel to gripper z
 const double DEFAULT_NEEDLE_RADIUS = 0.0254/2.0; // for 1" diam needle
-const double DEFAULT_NEEDLE_AXIS_HT= DEFAULT_NEEDLE_RADIUS/2.0; // height of needle z-axis above tissue
+const double DEFAULT_NEEDLE_AXIS_HT= DEFAULT_NEEDLE_RADIUS/sqrt(2.0); // height of needle z-axis above tissue
 const int NSAMPS_DRIVE_PLAN = 21; // decide how many samples of grasp poses to compute for needle drive over 180 deg
 //phi grab at 0.0--> grab in middle of arc
 const double DEFAULT_PHI_GRAB = 0.0;// M_PI/2.0; //puts tail of needle in middle of gripper--really not feasible
