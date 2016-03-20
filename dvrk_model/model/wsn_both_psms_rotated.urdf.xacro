@@ -49,7 +49,8 @@
  <joint name="endo_joint" type="fixed">
       <parent link="camera"/>
       <child link="davinci_endo"/>
-      <origin rpy="3.141593 0 0" xyz="0.00290 0 0.5"/>
+      <!--origin rpy="3.141593 0 0" xyz="0.00290 0 0.5"/-->
+      <origin rpy="3.141593 0 0" xyz="0.0029 0 0.5"/>
   </joint>
 
   <link name="davinci_endo">

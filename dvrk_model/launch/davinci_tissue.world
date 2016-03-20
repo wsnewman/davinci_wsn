@@ -33,7 +33,10 @@
          <pose>0.005 -0.001 0.820 1.57 0 -1.57</pose>
     </include>-->
 
-
+    <include>
+        <uri>model://needle_r</uri>
+         <pose>0.006 -0.028 0.780 1.57 0 0</pose>
+    </include>>
 
     <!--include>
         <uri>model://davinci_table</uri>
