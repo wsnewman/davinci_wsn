@@ -683,7 +683,7 @@ void NeedlePlanner::write_needle_drive_affines_to_file(vector <Eigen::Affine3d> 
     //R2.col(0) = nvec_gripper2; 
     //nvec2<<1,0,0;
     //bvec2<<0,0,1;
-    
+     
     double t=4; 
     double dt= 1.0; //time step between poses
     for (int i=0;i<nposes;i++) {
