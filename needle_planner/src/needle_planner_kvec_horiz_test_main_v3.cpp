@@ -12,6 +12,8 @@
  * 
  */
 #include <needle_planner/needle_planner.h>
+#include <geometry_msgs/Polygon.h>
+const int g_npts_good=32;
 
 Eigen::Affine3d g_affine_lcamera_to_psm_one, g_affine_lcamera_to_psm_two; //, affine_gripper_wrt_base;
 Eigen::Affine3d g_psm1_start_pose,g_psm2_start_pose;
@@ -159,12 +161,14 @@ int main(int argc, char** argv) {
     ros::init(argc, argv, "needle_planner_test_main"); //node name
     ros::NodeHandle nh; // create a node handle; need to pass this to the class constructor
     ros::Publisher exit_pt_publisher = nh.advertise<geometry_msgs::Point>("exit_points", 1);
+    ros::Publisher exit_pt_array_publisher = nh.advertise<geometry_msgs::Polygon>("exit_point_array", 1);    
     ros::Subscriber thePoint = nh.subscribe("/thePoint", 1, inPointCallback);
 
     Eigen::Vector3d O_needle;
     Eigen::Vector3d O_entrance_pt;
     Eigen::Vector3d O_exit_pt;
     double x_entrance, y_entrance;
+    geometry_msgs::Polygon polygon_msg;
 
     /*
     cout<<"using tissue z = "<<z_tissue<<endl; 
@@ -186,6 +190,7 @@ int main(int argc, char** argv) {
     vector <Eigen::Affine3d> gripper_affines_wrt_camera; //put answers here 
     vector <geometry_msgs::Point> exit_points;
     geometry_msgs::Point exitPoint;
+    geometry_msgs::Point32 p32;
     double needle_x, needle_y;
     Eigen::Vector3d v_entrance_to_exit, v_entrance_to_exit0;
     v_entrance_to_exit0 << 0, -1, 0; // corresponds to chosen needle kvec along 1,0,0
@@ -200,7 +205,7 @@ int main(int argc, char** argv) {
     while (ros::ok()) {
         if (g_got_new_entry_point) {
             g_got_new_entry_point = false;
-
+            polygon_msg.points.clear();
             double kvec_yaw = 0.0; // rotation of needle z-axis w/rt camera x-axis
 
                 O_entrance_pt = g_O_entry_point;
@@ -217,12 +222,19 @@ int main(int argc, char** argv) {
                 needlePlanner.simple_horiz_kvec_motion(O_needle, r_needle, kvec_yaw, gripper_affines_wrt_camera);
                 int nposes = gripper_affines_wrt_camera.size();
                 ROS_WARN("at kvec_yaw = %f, computed %d needle-drive gripper poses ", kvec_yaw, nposes);
-                if (nposes >= 38) {
+                if (nposes >= g_npts_good) {
                     exitPoint.x = O_exit_pt(0);
                     exitPoint.y = O_exit_pt(1);
                     exitPoint.z = O_exit_pt(2);
+                    p32.x = O_exit_pt(0);
+                    p32.y = O_exit_pt(1);
+                    p32.z = O_exit_pt(2);
                     exit_pt_publisher.publish(exitPoint);
+                    polygon_msg.points.push_back(p32);
                     exit_points.push_back(exitPoint); //not used...
+                }
+                if (polygon_msg.points.size()>0) {
+                    exit_pt_array_publisher.publish(polygon_msg);
                 }
             }
         }

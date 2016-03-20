@@ -47,6 +47,9 @@
 <!-- start the trajectory interpolation action server-->
 <node name="davinci_traj_interpolator_as" pkg="davinci_traj_streamer" type="davinci_traj_interpolator_as" output="screen"></node>
 
+<!-- start the trajectory interpolation action server-->
+<node name="needle_planner_exit_point_evaluator" pkg="needle_planner" type="needle_planner_exit_point_evaluator" output="screen"></node>
+
  <include file="$(find dvrk_model)/launch/davinci_endo_sim.launch">
  </include> 
 
