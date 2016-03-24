@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot name="dvrk_psm" xmlns:xacro="http://www.ros.org/wiki/xacro">
+ 
+  <!-- This file contains different tool urdf -->
+  <xacro:include filename="$(find dvrk_model)/model/common.urdf.xacro"/>
+  <xacro:property name="GazeboRed"       value="1 0 0 1"/>
+  <material name="GazeboRed">      <color rgba="${GazeboRed}"/></material>
+
+  <!-- sca  -->
+  <xacro:macro name="psm_tool_sca" params="prefix">
+    
+    <!-- joint 5: Outer wrist pitch joint -->
+    <joint name="${prefix}outer_wrist_pitch_joint" type="revolute">
+      <parent link="${prefix}tool_wrist_shaft_link"/>
+      <child link="${prefix}tool_wrist_sca_link"/>
+      <axis xyz="0 0 1"/>
+      <origin rpy="-1.5708 -1.5708 0" xyz="0 0 0"/>
+      <limit lower="-1.5707" upper="1.5707" velocity=".4" effort="1000"/>
+    </joint>
+
+    <!-- link 5: tool_wrist_sca_link -->
+    <!-- wsn: want to have collision properties for this -->
+    <link name="${prefix}tool_wrist_sca_link">
+      <visual>
+        <!-- <origin rpy="0 3.1416 0" xyz="0 0 0"/> -->
+        <origin rpy="1.5708 3.1416 0" xyz="0.0051 0.0032 0"/>
+        <geometry>
+          <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_link.dae"/> 
+        </geometry>
+      </visual>
+      <collision>
+        <origin rpy="1.5708 3.1416 0" xyz="0.0051 0.0032 0"/>
+          <geometry>
+              <!-- coarse model; a simple box -->
+              <!--box size="0.05 0.2 0.05"/-->
+          <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_link.dae"/> 
+          </geometry>
+      </collision>
+     <selfCollide>false</selfCollide>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.05"/>
+      <inertia
+        ixx="0.01" ixy="0.0" ixz="0.0"
+        iyy="0.01" iyz="0.0"
+        izz="0.005"/>
+    </inertial> 
+    </link>
+
+    <!-- joint 6: Outer wrist yaw joint -->
+    <joint name="${prefix}outer_wrist_yaw_joint" type="revolute">
+      <parent link="${prefix}tool_wrist_sca_link"/>
+      <child link="${prefix}tool_wrist_sca_shaft_link"/>
+      <axis xyz="0 0 1"/>
+      <origin rpy="-1.5708 -1.5708 0" xyz="0.0091 0 0"/>
+      <!-- +/- 80 deg -->
+      <limit lower="-1.3963" upper="1.3963" velocity=".4" effort="1000"/>
+    </joint>
+
+    <!-- link 6: tool_wrist_sca_shaft_link -->
+    <link name="${prefix}tool_wrist_sca_shaft_link">
+      <visual>
+        <origin rpy="0 0 0" xyz="0 -0.0002 -0.0025"/>
+        <geometry>
+          <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_shaft_link.dae"/> 
+        </geometry>
+      </visual>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.05"/>
+      <inertia
+        ixx="0.01" ixy="0.0" ixz="0.0"
+        iyy="0.01" iyz="0.0"
+        izz="0.005"/>
+    </inertial> 
+    </link>
+    
+    <!-- joint 7-1: Outer open angle 1  -->
+    <joint name="${prefix}outer_wrist_open_angle_joint" type="revolute">
+      <parent link="${prefix}tool_wrist_sca_shaft_link"/>
+      <child link="${prefix}tool_wrist_sca_ee_link_1"/>
+      <axis xyz="0 0 1"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <limit lower="0" upper="1.5707" velocity=".4" effort="1000"/>
+    </joint>
+
+    <!-- link 7-1: Outer open angle link 1 -->
+    <link name="${prefix}tool_wrist_sca_ee_link_1">
+      <visual>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <geometry>
+          <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_link_2.dae"/>
+        </geometry>
+      </visual>
+  
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.05"/>
+      <inertia
+        ixx="0.01" ixy="0.0" ixz="0.0"
+        iyy="0.01" iyz="0.0"
+        izz="0.005"/>
+    </inertial> 
+    </link>
+
+    <!-- joint 7-2: Outer open angle 2   -->
+    <joint name="${prefix}outer_wrist_open_angle_joint_mimic" type="revolute">
+      <parent link="${prefix}tool_wrist_sca_shaft_link"/>
+      <child link="${prefix}tool_wrist_sca_ee_link_2"/>
+      <axis xyz="0 0 1"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <limit lower="-1.5707" upper="1.5707" velocity=".4" effort="1000"/>
+      <!--mimic joint="${prefix}outer_wrist_open_angle_joint" multiplier="-1"/-->
+    </joint>
+
+    <!-- link 7-2: Outer open angle link 2 -->
+    <link name="${prefix}tool_wrist_sca_ee_link_2">
+      <visual>
+        <origin rpy="0 3.1516 0" xyz="0 0 0"/>
+        <geometry>
+          <mesh filename="package://dvrk_model/meshes/psm/tool_wrist_sca_link_2.dae"/>
+        </geometry>
+      </visual>
+
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.05"/>
+      <inertia
+        ixx="0.01" ixy="0.0" ixz="0.0"
+        iyy="0.01" iyz="0.0"
+        izz="0.005"/>
+    </inertial> 
+    </link>
+
+<!-- wsn: try adding a fingertip for grasping -->
+    <link name="${prefix}fingertip2">
+     <visual>
+        <origin rpy="0 0 0" xyz="0.001 0.005 0.0005"/>
+        <geometry>
+          <box size="0.002 0.01 0.004"/>
+        </geometry>
+     </visual>
+      <collision>
+        <origin rpy="0 0 0" xyz="0.001 0.005 0.0005"/>
+        <geometry>
+          <box size="0.002 0.01 0.004"/>
+        </geometry>
+       <surface>
+            <friction>
+              <ode>
+                <mu>30.0</mu>
+                <mu2>30.0</mu2>
+              </ode>
+            </friction>
+            <contact>
+              <ode>
+                <kp>1000000.0</kp>
+                <kd>100.0</kd>
+                <max_vel>1.0</max_vel>
+                <min_depth>0.001</min_depth>
+              </ode>
+            </contact>
+          </surface>
+      </collision>
+     <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.05"/>
+      <inertia
+        ixx="0.01" ixy="0.0" ixz="0.0"
+        iyy="0.01" iyz="0.0"
+        izz="0.005"/>
+    </inertial> 
+    </link>
+    <!-- attach fingertip pad  -->
+    <joint name="${prefix}fingertip2_joint" type="fixed">
+      <parent link="${prefix}tool_wrist_sca_ee_link_2"/>
+      <child link="${prefix}fingertip2"/>
+      <axis xyz="0 0 1"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </joint>
+    
+    <!--bring in a needle model and permanently attach it to gripper-->
+    <!--no collision model-->
+    <link name="${prefix}needle_link1">
+      <visual>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <geometry>
+          <mesh filename="package://dvrk_model/meshes/needle/needle_r.dae"/>
+        </geometry>
+      </visual>
+  
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.05"/>
+      <inertia
+        ixx="0.001" ixy="0.0" ixz="0.0"
+        iyy="0.001" iyz="0.0"
+        izz="0.0005"/>
+    </inertial> 
+    </link>
+  
+
+    <!--try attaching a needle?? -->
+    <joint name="${prefix}fingertip2_needle_joint" type="fixed">
+      <parent link="${prefix}fingertip2"/>
+      <child link="${prefix}needle_link1"/>
+      <axis xyz="0 0 1"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </joint>    
+
+<!-- wsn: other fingertip -->
+    <link name="${prefix}fingertip1">
+     <visual>
+        <origin rpy="0 0 0" xyz="-0.001 0.005 0.0005"/>
+        <geometry>
+          <box size="0.002 0.01 0.004"/>
+        </geometry>
+     </visual>
+      <collision>
+        <origin rpy="0 0 0" xyz="-0.001 0.005 0.0005"/>
+        <geometry>
+          <box size="0.002 0.01 0.004"/>
+        </geometry>
+       <surface>
+            <friction>
+              <ode>
+                <mu>30.0</mu>
+                <mu2>30.0</mu2>
+              </ode>
+            </friction>
+            <contact>
+              <ode>
+                <kp>1000000.0</kp>
+                <kd>100.0</kd>
+                <max_vel>1.0</max_vel>
+                <min_depth>0.001</min_depth>
+              </ode>
+            </contact>
+          </surface>
+      </collision>
+     <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.05"/>
+      <inertia
+        ixx="0.01" ixy="0.0" ixz="0.0"
+        iyy="0.01" iyz="0.0"
+        izz="0.005"/>
+    </inertial> 
+    </link>
+    <!-- attach fingertip pad 1  -->
+    <joint name="${prefix}fingertip1_joint" type="fixed">
+      <parent link="${prefix}tool_wrist_sca_ee_link_1"/>
+      <child link="${prefix}fingertip1"/>
+      <axis xyz="0 0 1"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </joint>
+
+
+    <!-- tool tip -->
+    <joint name="${prefix}tool_tip_joint_" type="fixed">
+      <parent link="${prefix}tool_wrist_sca_shaft_link"/>
+      <child link="${prefix}tool_tip_link"/>
+      <origin rpy="0 ${PI/2} ${PI/2}" xyz="0 0.0102 0"/>
+    </joint>
+    
+    <link name="${prefix}tool_tip_link">
+     <visual>
+      <geometry>
+          <!-- put a fiducial, a sphere, at the tool tips -->
+        <sphere radius="0.001"/>
+      </geometry>
+
+    </visual>
+    </link>
+ <!--this colors the tool-tip fiducial red; oddly, this shows up in the camera view, but NOT in the rviz view -->
+  <gazebo reference="${prefix}tool_tip_link">
+    <material>Gazebo/Red</material>
+  </gazebo>
+    
+ <transmission name="${prefix}tran5">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="${prefix}outer_wrist_pitch_joint">
+      <hardwareInterface>EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="${prefix}motor5">
+      <hardwareInterface>EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <transmission name="${prefix}tran6">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="${prefix}outer_wrist_yaw_joint">
+      <hardwareInterface>EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="${prefix}motor6">
+      <hardwareInterface>EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <transmission name="${prefix}tran7">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="${prefix}outer_wrist_open_angle_joint">
+      <hardwareInterface>EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="${prefix}motor7">
+      <hardwareInterface>EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <transmission name="${prefix}tran7_mimic">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="${prefix}outer_wrist_open_angle_joint_mimic">
+      <hardwareInterface>EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="${prefix}motor7_mimic">
+      <hardwareInterface>EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+    
+  </xacro:macro>
+  
+</robot>
