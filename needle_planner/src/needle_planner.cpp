@@ -401,7 +401,7 @@ void NeedlePlanner::simple_horiz_kvec_motion(Eigen::Vector3d O_needle, double r_
     bvec0<<1,0,0;//at kvec_yaw=0, set needle axis parallel to camera-frame x-axis
     //nvec<<-1,0,0;
     //bvec<<1,0,0;
-    nvec<<0,0,1;   
+    nvec<<0,0,-1;  //start w/ gripper x axis pointing "up" towards camera 
     bvec = Rotz(kvec_yaw)*bvec0; //rotate the needle axis about camera z-axis
     //cout<<"needle z-vec in camera frame: "<<bvec.transpose()<<endl;
             
@@ -417,7 +417,9 @@ void NeedlePlanner::simple_horiz_kvec_motion(Eigen::Vector3d O_needle, double r_
     //cout<<"needle tip: "<<affine_gripper_frame_wrt_camera_frame_.translation().transpose()<<endl;
     gripper_affines_wrt_camera.clear();
     int nsolns=0;
-    for (double phi = 0.0; phi> -M_PI; phi-=dphi) {
+    int nphi=0;
+    cout<<"nphi: ";
+    for (double phi = 0.0; phi< M_PI; phi+=dphi) {
         //need to rotate gripper frame about camera-frame x-axis;
         // DO want to describe this as equiv rotation about gripper-frame z-axis
         
@@ -431,7 +433,7 @@ void NeedlePlanner::simple_horiz_kvec_motion(Eigen::Vector3d O_needle, double r_
         //cout<<"Rot_k_phi(bvec,phi):"<<endl;
         //cout<<Rot_k_phi(bvec,phi)<<endl;
         affine_gripper_frame_wrt_camera_frame_.linear()=R;
-        tip_pos=O_needle - r_needle*R.col(1);
+        tip_pos=O_needle - r_needle*R.col(1); // assumes needle x-axis is parallel to gripper y axis
         affine_gripper_frame_wrt_camera_frame_.translation() = tip_pos;
         //cout<<"gripper1 orientation at phi = "<<phi<<endl;
         //cout<<affine_gripper_frame_wrt_camera_frame_.linear()<<endl;
@@ -446,12 +448,15 @@ void NeedlePlanner::simple_horiz_kvec_motion(Eigen::Vector3d O_needle, double r_
         //cout<<"phi = "<<phi;
         if (ik_solver_.ik_solve(des_gripper1_wrt_base)) 
         {  nsolns++;
+           cout<<nphi<<",";
            //cout<<":  found IK; nsolns = "<<nsolns<<endl;
            gripper_affines_wrt_camera.push_back(affine_gripper_frame_wrt_camera_frame_);
         }
+        nphi++;
         //else cout<<";  NO IK"<<endl;
      
     }
+    cout<<endl;
 }
 
 void NeedlePlanner::simple_horiz_kvec_motion_psm2(Eigen::Vector3d O_needle, double r_needle, double kvec_yaw, vector <Eigen::Affine3d> &gripper_affines_wrt_camera) {
