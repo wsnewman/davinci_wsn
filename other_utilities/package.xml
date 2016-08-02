@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package>
+	<name>other_utilities</name>
+	<version>0.0.0</version>
+	<description>General useful things for the davinci project.</description>
+
+	<maintainer email="tes77@case.edu">Tom</maintainer>
+
+	<license>TODO</license>
+
+	<buildtool_depend>catkin</buildtool_depend>
+	<buildtool_depend>catkin_simple</buildtool_depend>
+
+	<build_depend>davinci_kinematics</build_depend>
+	<build_depend>eigen</build_depend>
+	<build_depend>tf</build_depend>
+
+	<run_depend>davinci_kinematics</run_depend>
+	<run_depend>eigen</run_depend>
+	<run_depend>tf</run_depend>
+
+	<export>
+	</export>
+</package>

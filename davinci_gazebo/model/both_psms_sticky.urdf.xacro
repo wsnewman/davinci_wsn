@@ -1,0 +1,160 @@
+<?xml version="1.0" ?>
+<robot name="dvrk_psm" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+	<!-- Macros -->
+	<xacro:include filename="$(find davinci_gazebo)/model/psm_sticky.urdf.xacro"/>
+
+	<link name="world">
+		<origin xyz="0.0 0.0 0.0"/>  
+	</link>
+
+	<joint name="world_joint" type="fixed">
+		<parent link="world"/>
+		<child link="camera"/>
+		<origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0"/>
+	</joint>
+	
+	<link name="camera">
+		<origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.8"/>
+	</link>
+  
+	<joint name="camera_joint" type="fixed">
+		<parent link="camera"/>
+		<child link="right_camera_link"/>
+		<origin rpy="0.0 1.5708 1.5708" xyz="-0.005 0.0 0.5"/>
+	</joint>
+
+	<link name="right_camera_link">
+		<visual>
+			<origin xyz="0 0 0.0" rpy="0 0 0"/>
+			<geometry>
+				<box size="0.03 0.01 0.01"/>
+			</geometry>
+			<material name="red"/>
+		</visual>
+
+		<inertial>
+			<mass value="1e-5" />
+			<origin xyz="0 0 0" rpy="0 0 0"/>
+			<inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6" />
+		</inertial>
+		<!--origin rpy="0.0 0.0 0.0" xyz="0.0 0.2 0.8"/-->
+	</link>
+  
+	<joint name="left_camera_joint" type="fixed">
+		<parent link="camera"/>
+		<child link="left_camera_link"/>
+		<origin rpy="0.0 1.5708 1.5708" xyz="0.005 0.00 0.5"/>
+	</joint>
+
+	<link name="left_camera_link">
+		<visual>
+			<origin xyz="0 0 0.0" rpy="0 0 0"/>
+			<geometry>
+				<box size="0.03 0.01 0.01"/>
+			</geometry>
+			<material name="red"/>
+		</visual>
+
+		<inertial>
+			<mass value="1e-5" />
+			<origin xyz="0 0 0" rpy="0 0 0"/>
+			<inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6" />
+		</inertial>
+		<!--origin rpy="0.0 0.0 0.0" xyz="0.0 0.2 0.8"/-->
+	</link>
+
+	<xacro:psm_sca prefix="one_" parent_link="camera" xyz="-0.15 0.05 0.5" rpy="0.0 0.0 3.1415926"/>
+	<xacro:psm_sca prefix="two_" parent_link="camera" xyz="0.15 0.05 0.5" rpy="0.0 0.0 3.1415926"/>
+
+	<!-- ros_control plugin -->
+	<gazebo>
+		<plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+			<robotNamespace>/davinci</robotNamespace>
+			<robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
+		</plugin>
+	</gazebo>   
+  
+	<!-- right camera -->
+	<gazebo reference="right_camera_link">
+		<sensor type="camera" name="right_camera">
+			<update_rate>30.0</update_rate>
+			<camera name="right_camera">
+				<horizontal_fov>0.6</horizontal_fov>
+				<image>
+					<width>640</width>
+					<height>480</height>
+					<format>R8G8B8</format>
+				</image>
+				<clip>
+					<near>0.005</near>
+					<far>0.9</far>
+				</clip>
+				<noise>	
+					<type>gaussian</type>
+					<!-- Noise is sampled independently per pixel on each frame.
+					That pixel's noise value is added to each of its color
+					channels, which at that point lie in the range [0,1]. -->
+					<mean>0.0</mean>
+					<stddev>0.007</stddev>
+				</noise>
+			</camera>
+			<plugin name="camera_controller" filename="libgazebo_ros_camera.so">
+				<alwaysOn>true</alwaysOn>
+				<updateRate>0.0</updateRate>
+				<cameraName>davinci/right_camera</cameraName>
+				<imageTopicName>image_raw</imageTopicName>
+				<cameraInfoTopicName>camera_info</cameraInfoTopicName>
+				<frameName>right_camera_link</frameName>
+				<hackBaseline>0.07</hackBaseline>
+				<distortionK1>0.0</distortionK1>
+				<distortionK2>0.0</distortionK2>
+				<distortionK3>0.0</distortionK3>
+				<distortionT1>0.0</distortionT1>
+				<distortionT2>0.0</distortionT2>
+			</plugin>
+		</sensor>
+	</gazebo>
+	  
+	<!-- left camera -->
+	<gazebo reference="left_camera_link">
+		<sensor type="camera" name="left_camera">
+			<update_rate>30.0</update_rate>
+			<camera name="left_camera">
+				<horizontal_fov>0.6</horizontal_fov>
+				<image>
+					<width>640</width>
+					<height>480</height>
+					<format>R8G8B8</format>
+				</image>
+				<clip>
+					<near>0.005</near>
+					<far>0.9</far>
+				</clip>
+				<noise>
+					<type>gaussian</type>
+					<!-- Noise is sampled independently per pixel on each frame.
+					That pixel's noise value is added to each of its color
+					channels, which at that point lie in the range [0,1]. -->
+					<mean>0.0</mean>
+					<stddev>0.007</stddev>
+				</noise>
+			</camera>
+			<plugin name="camera_controller" filename="libgazebo_ros_camera.so">
+				<alwaysOn>true</alwaysOn>
+				<updateRate>0.0</updateRate>
+				<cameraName>davinci/left_camera</cameraName>
+				<imageTopicName>image_raw</imageTopicName>
+				<cameraInfoTopicName>camera_info</cameraInfoTopicName>
+				<frameName>left_camera_optical_frame</frameName>
+				<!--frameName>left_camera_link</frameName-->
+				<hackBaseline>0.07</hackBaseline>
+				<distortionK1>0.0</distortionK1>
+				<distortionK2>0.0</distortionK2>
+				<distortionK3>0.0</distortionK3>
+				<distortionT1>0.0</distortionT1>
+				<distortionT2>0.0</distortionT2>
+			</plugin>
+		</sensor>
+	</gazebo>
+</robot>

@@ -1,0 +1,3 @@
+<launch>
+	<node name="sim_start" pkg="dv_string_puller" type="run_sim_script.sh"/>
+</launch>
