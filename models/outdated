@@ -1,0 +1,4 @@
+Simulations using the Gazebo models should pull from the dv_models package.
+
+WHAT USES THIS:
+Probably most of davinci_gazebo
