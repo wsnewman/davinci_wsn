@@ -275,7 +275,15 @@ void TrajActionServer::executeCB(const actionlib::SimpleActionServer<davinci_tra
     if (npts  < 2) {
         ROS_WARN("too few points; aborting goal");
         as_.setAborted(result_);
-    } else { //OK...have a valid trajectory goal; execute it
+    }
+    else if(working_on_trajectory){
+    	ROS_WARN("I'm still busy. Go away!");
+    	as_.setAborted(result_);
+    }
+    else { //OK...have a valid trajectory goal; execute it
+    	
+    	working_on_trajectory = true;
+    	
         //got_new_goal = true;
         //got_new_trajectory = true;
         ROS_INFO("Cb received traj w/ npts = %d",npts);
@@ -298,9 +306,9 @@ void TrajActionServer::executeCB(const actionlib::SimpleActionServer<davinci_tra
             cout << endl;
         }
 
-        as_.isActive();
+	as_.isActive();//TOM SAYS: This is a complete no-op- the isActive method simply queries and does not affect the actionserver's state in any way!
 
-        working_on_trajectory = true;
+        
         //got_new_trajectory=false;
         traj_clock = 0.0; // initialize clock for trajectory;
         isegment = 0;
@@ -344,12 +352,15 @@ void TrajActionServer::executeCB(const actionlib::SimpleActionServer<davinci_tra
         ros::Duration(dt_traj).sleep();
     }
     ROS_INFO("completed execution of a trajectory" );
+    ROS_INFO("We are sending back an rv of %i and a ti of %i", result_.return_val, result_.traj_id);
     as_.setSucceeded(result_); // tell the client that we were successful acting on the request, and return the "result" message 
 }
 
 // more general version--arbitrary number of joints
-bool TrajActionServer::update_trajectory(double traj_clock, trajectory_msgs::JointTrajectory trajectory, Eigen::VectorXd qvec_prev, 
-        int &isegment, Eigen::VectorXd &qvec_new) {
+bool TrajActionServer::update_trajectory(
+	double traj_clock, trajectory_msgs::JointTrajectory trajectory, Eigen::VectorXd qvec_prev, 
+        int &isegment, Eigen::VectorXd &qvec_new
+) {
     
     trajectory_msgs::JointTrajectoryPoint trajectory_point_from, trajectory_point_to;
     int njnts = qvec_prev.size();
@@ -363,7 +374,8 @@ bool TrajActionServer::update_trajectory(double traj_clock, trajectory_msgs::Joi
         trajectory_point_to = trajectory.points[isegment + 1];
         t_subgoal = trajectory_point_to.time_from_start.toSec();
         //cout<<"iseg = "<<isegment<<"; t_subgoal = "<<t_subgoal<<endl;
-    } else {
+    }
+    else {
         cout << "reached end of last segment" << endl;
         trajectory_point_to = trajectory.points[nsegs];
         t_subgoal = trajectory_point_to.time_from_start.toSec();

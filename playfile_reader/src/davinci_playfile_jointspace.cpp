@@ -210,7 +210,7 @@ int main(int argc, char** argv){
 
 	// attempt to connect to the server:
 	ROS_INFO("waiting for server: ");
-	bool server_exists = action_client.waitForServer(ros::Duration(tat + 2.0)); // wait for up to 5 seconds
+	bool server_exists = action_client.waitForServer(ros::Duration(5.0)); // wait for up to 5 seconds
 	// something odd in above: does not seem to wait for 5 seconds, but returns rapidly if server not running
 
 
@@ -235,6 +235,7 @@ int main(int argc, char** argv){
 	//bool finished_before_timeout = action_client.waitForResult(); // wait forever...
 	if (!finished_before_timeout) {
 		ROS_WARN("giving up waiting on result");
+		ROS_INFO("Timespan was %f", tat+2.0);
 		return 0;
 	}
 	else {
