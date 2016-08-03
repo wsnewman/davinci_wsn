@@ -103,16 +103,16 @@ int main(int argc, char** argv){
 
 	//FIRST CHANGE: ADD PACKAGE LOCATION SUPPORT
 
-	const char * fname;
+	std::string fname;
 	if(argc == 2){
 		fname = argv[1];
-		ROS_INFO("Direct file location: %s", fname);
+		ROS_INFO("Literal file location: %s", fname.c_str());
 	}
 	else if(argc == 3){
 		std::string packpart = ros::package::getPath(argv[1]).c_str();
 		std::string pathpart = argv[2];
-		fname = (packpart + pathpart).c_str();
-		ROS_INFO("Package file location: %s", fname);
+		fname = (packpart + pathpart);
+		ROS_INFO("Package file location: %s", fname.c_str());
 	}
 	else{
 		ROS_INFO("argc= %d; missing file command-line argument; halting",argc);
@@ -121,7 +121,7 @@ int main(int argc, char** argv){
 	
 	
 	//open the trajectory file:
-	ifstream infile(fname);
+	ifstream infile(fname.c_str());
 	if(!infile){		// file couldn't be opened
 		cerr << "Error: file could not be opened; halting" << endl;
 		exit(1);
@@ -245,7 +245,5 @@ int main(int argc, char** argv){
 
 
 	cout << "Good bye!\n";
-	
-	ROS_ERROR("GOT TO THE END.");
 	return 0;
 }
