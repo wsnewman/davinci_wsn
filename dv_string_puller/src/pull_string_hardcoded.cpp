@@ -9,7 +9,8 @@ const double MAX_PULL_LENGTH = 1.0;
 
 Eigen::Vector3d thread_start_loc;
 Eigen::Vector3d * safety_cube;
-tf::StampedTransform world_to_camera_tf;
+Eigen::Affine3d world_to_camera_tf;
+Eigen::Affine3d camera_to_world_tf;
 
 double x_delta, y_delta, z_delta;
 
@@ -44,13 +45,19 @@ int main(int argc, char** argv){
 	ros::NodeHandle nh;
 	DavinciJointPublisher djp(nh);
 	
+	//These MAY OR MAY NOT always be here- I think that for things like the safety
+	//	cube it makes some sense to define them in worldspace, but I'm not sure
+	//	it's strictly necessary. I'd like to eliminate these calls if possible,
+	//	so try to minimize the use of the world space in general.
 	//Get a generally useful thing: the transform between the WORLD and the CAMERA
+	tf::StampedTransform world_to_camera_tf_raw;
+	tf::StampedTransform camera_to_world_tf_raw;
 	tf::TransformListener tfl;
 	bool tferr=true;
 	while(tferr && ros::ok()) {
 		tferr=false;
 		try {
-			tfl.lookupTransform("world","left_camera_optical_frame",  ros::Time(0), world_to_camera_tf);
+			tfl.lookupTransform("world","left_camera_optical_frame",  ros::Time(0), world_to_camera_tf_raw);
 		}
 		catch(tf::TransformException &exception) {
 			ROS_WARN("%s", exception.what());
@@ -60,16 +67,36 @@ int main(int argc, char** argv){
                 	ros::spinOnce();                
             	}
     	}
+    	world_to_camera_tf = Davinci_fwd_solver::transformTFToAffine3d(world_to_camera_tf_raw);
 	ROS_INFO("Got transform between world and cameras.");
+	//And the reverse.
+	tferr=true;
+	while(tferr && ros::ok()) {
+		tferr=false;
+		try {
+			tfl.lookupTransform("left_camera_optical_frame","world",  ros::Time(0), camera_to_world_tf_raw);
+		}
+		catch(tf::TransformException &exception) {
+			ROS_WARN("%s", exception.what());
+                	ROS_WARN("retrying");
+                	tferr=true;
+                	ros::Duration(0.5).sleep(); // sleep for half a second
+                	ros::spinOnce();                
+            	}
+    	}
+    	camera_to_world_tf = Davinci_fwd_solver::transformTFToAffine3d(camera_to_world_tf_raw);
+	ROS_INFO("Got transform between cameras and world.");
 	
 	//Calculate our operational cube in camera space.
-	/*if(!find_safety_cube()){
+	if(!find_safety_cube()){
 		ROS_ERROR("Safety cube undefined! WTF?!");
 		return 1;
 	}
+	ROS_INFO("Transformed safety cube is (%f, %f, %f) to (%f, %f, %f)", safety_cube[0].x(), safety_cube[0].y(),safety_cube[0].z(), safety_cube[1].x(), safety_cube[1].y(),safety_cube[1].z());
+	
 	
 	//Go ahead and get the location of or thread (in camera space).
-	if(!find_thread_start()){
+	/*if(!find_thread_start()){
 		ROS_ERROR("String puller could not locate the thread.");
 		ROS_ERROR("Make sure there is a thread there or something... actually, I'm really not sure HOW this can even happen.");
 		return 1;
@@ -104,8 +131,7 @@ bool find_thread_start(){
 	//Hardcoded location in world space.
 	thread_start_loc = Eigen::Vector3d(0.0, -0.261329, 0.546016);
 	//Convert it to camera space...
-	Eigen::Affine3d wctf_a = math_util::transformTFToEigen(world_to_camera_tf);
-	thread_start_loc = wctf_a * thread_start_loc;
+	thread_start_loc = world_to_camera_tf * thread_start_loc;
 	//===============================================================================================================================
 	
 	return true;
@@ -119,9 +145,8 @@ bool find_safety_cube(){
 	safety_cube[0] = Eigen::Vector3d(-0.25, -0.3, 0.4);
 	safety_cube[1] = Eigen::Vector3d(0.25, 0.1, 0.8);
 	
-	Eigen::Affine3d wctf_a = math_util::transformTFToEigen(world_to_camera_tf);
-	safety_cube[0] = wctf_a * safety_cube[0];
-	safety_cube[1] = wctf_a * safety_cube[1];
+	safety_cube[0] = world_to_camera_tf * safety_cube[0];
+	safety_cube[1] = world_to_camera_tf * safety_cube[1];
 	//===============================================================================================================================
 	return true;
 }
@@ -159,12 +184,11 @@ bool get_limb_position(bool leader, ros::NodeHandle& nh){
 	//Calculate the gripper's position therefrom.
 	Eigen::Affine3d gp_transform = f.fwd_kin_solve(joints);
 	Eigen::Vector3d g_wrt_r = gp_transform * Eigen::Vector3d(0.0, 0.0, 0.0);
-	Eigen::Affine3d wctf_a = math_util::transformTFToEigen(world_to_camera_tf);
 	if((leader && right_gripper_leading) || (!leader && !right_gripper_leading)){
-		right_gripper_position = wctf_a * g_wrt_r;
+		right_gripper_position = world_to_camera_tf * g_wrt_r;
 	}
 	else{
-		left_gripper_position = wctf_a * g_wrt_r;
+		left_gripper_position = world_to_camera_tf * g_wrt_r;
 	}
 	return true;
 }

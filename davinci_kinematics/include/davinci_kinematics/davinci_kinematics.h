@@ -226,10 +226,10 @@ public:
 
     tf::TransformListener *tfListener_ptr_; //pointer to a transform listener
     // some translation utilities
-    Eigen::Affine3f transformTFToEigen(const tf::Transform &t); 
-    Eigen::Affine3f stampedTFToEigen(const tf::StampedTransform &t);
-    Eigen::Affine3d transformTFToAffine3d(const tf::Transform &t); 
-    Eigen::Affine3d stampedTFToAffine3d(const tf::StampedTransform &t);
+    static Eigen::Affine3f transformTFToEigen(const tf::Transform &t); 
+    static Eigen::Affine3f stampedTFToEigen(const tf::StampedTransform &t);
+    static Eigen::Affine3d transformTFToAffine3d(const tf::Transform &t); 
+    static Eigen::Affine3d stampedTFToAffine3d(const tf::StampedTransform &t);
     
     geometry_msgs::Pose transformEigenAffine3fToPose(Eigen::Affine3f e);
     geometry_msgs::Pose transformEigenAffine3dToPose(Eigen::Affine3d e);

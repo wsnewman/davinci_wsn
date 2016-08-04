@@ -149,8 +149,6 @@ int main(int argc, char** argv){
 
 	// Otherwise, list some basic information about the file.
 	//cout << "CSV file contains " << data.size() << " records.\n";
-	
-	ROS_ERROR("Done reading.");
 
 	unsigned min_record_size = data[0].size();
 	unsigned max_record_size = 0;
@@ -230,8 +228,22 @@ int main(int argc, char** argv){
 	//action_client.sendGoal(goal); // simple example--send goal, but do not specify callbacks
 	action_client.sendGoal(goal,&doneCb); // we could also name additional callback functions here, if desired
 	//action_client.sendGoal(goal, &doneCb, &activeCb, &feedbackCb); //e.g., like this
-
-	bool finished_before_timeout = action_client.waitForResult(ros::Duration(tat+2.0));
+	
+	bool finished_before_timeout;
+	//double rt;// = ros::Time::now().toSec();
+	//while(rt == 0.0 && ros::ok()){
+	//	ROS_WARN("Got zero time. Trying again...");
+	//	rt = ros::Time::now().toSec();
+	//}
+	//do{
+		//rt = ros::Time::now().toSec();
+		//ROS_ERROR("Beginning wall time is %f", rt);
+		finished_before_timeout = action_client.waitForResult(ros::Duration(tat+2.0));
+		//ROS_ERROR("Ending wall time is %f", ros::Time::now().toSec());
+		//ROS_WARN("Done with wait...");
+	//}while(rt == 0.0 && ros::ok());
+	
+	//Sometimes this times out damn near immediately. Some sort of underlying ROS issue?
 	//bool finished_before_timeout = action_client.waitForResult(); // wait forever...
 	if (!finished_before_timeout) {
 		ROS_WARN("giving up waiting on result");

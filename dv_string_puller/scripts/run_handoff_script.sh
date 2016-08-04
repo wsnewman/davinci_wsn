@@ -10,16 +10,15 @@ twist: { linear: { x: 0, y: 0, z: 0 }, angular: { x: 0, y: 0, z: 0}  },
 reference_frame: world
 }'
 
-
 rosrun playfile_reader playfile_jointspace dv_string_puller /play/jsp/bothhands_grasp.jsp
 
 rosrun sticky_fingers finger_control_dummy_node sticky_finger/two_fingertip1_sticky smooth
 
-rosrun playfile_reader playfile_jointspace /home/tes77/ros_ws/src/davinci_wsn/dv_string_puller/play/jsp/bothhands_grasp_finish.jsp
+#rosrun playfile_reader playfile_jointspace dv_string_puller /play/jsp/bothhands_grasp_finish.jsp
 
 read X
 
-rosrun playfile_reader playfile_jointspace  /home/tes77/ros_ws/src/davinci_wsn/dv_string_puller/play/jsp/all_zero.jsp
+rosrun playfile_reader playfile_jointspace  dv_string_puller /play/jsp/all_zero.jsp
 
 rosrun sticky_fingers finger_control_dummy_node sticky_finger/one_fingertip1_sticky smooth
 

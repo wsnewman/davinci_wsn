@@ -250,6 +250,8 @@ void TrajActionServer::command_joints(Eigen::VectorXd q_cmd) {
 }
 
 void TrajActionServer::executeCB(const actionlib::SimpleActionServer<davinci_traj_streamer::trajAction>::GoalConstPtr& goal) {
+        ROS_INFO("in executeCB");
+    
     double traj_clock, dt_segment, dq_segment, delta_q_segment, traj_final_time;
     int isegment;
     trajectory_msgs::JointTrajectoryPoint trajectory_point0;
@@ -261,8 +263,6 @@ void TrajActionServer::executeCB(const actionlib::SimpleActionServer<davinci_tra
     // TEST TEST TEST
     //Eigen::VectorXd q_vec;
     //q_vec<<0.1,0.2,0.15,0.4,0.5,0.6,0.7;    
-
-    ROS_INFO("in executeCB");
 
     g_count++; // keep track of total number of goals serviced since this server was started
     result_.return_val = g_count; // we'll use the member variable result_, defined in our class
@@ -325,7 +325,7 @@ void TrajActionServer::executeCB(const actionlib::SimpleActionServer<davinci_tra
         //qvec_prev = qvec0;
         cout << "start pt: " << qvec_prev.transpose() << endl;
     }
-    while (working_on_trajectory) {
+    while (working_on_trajectory && ros::ok()) {
         traj_clock += dt_traj;
         // update isegment and qvec according to traj_clock; 
         //if traj_clock>= final_time, use exact end coords and set "working_on_trajectory" to false 
@@ -354,6 +354,8 @@ void TrajActionServer::executeCB(const actionlib::SimpleActionServer<davinci_tra
     ROS_INFO("completed execution of a trajectory" );
     ROS_INFO("We are sending back an rv of %i and a ti of %i", result_.return_val, result_.traj_id);
     as_.setSucceeded(result_); // tell the client that we were successful acting on the request, and return the "result" message 
+    //ROS_ERROR("Activation status is %i", as_.isActive());
+    ROS_ERROR("Successfully sent back, callback is ended.");
 }
 
 // more general version--arbitrary number of joints
@@ -388,7 +390,7 @@ bool TrajActionServer::update_trajectory(
     }
 
     //cout<<"iseg = "<<isegment<<"; t_subgoal = "<<t_subgoal<<endl;
-    while ((t_subgoal < traj_clock)&&(isegment < nsegs)) {
+    while ((t_subgoal < traj_clock)&&(isegment < nsegs) && ros::ok()) {
         //cout<<"loop: iseg = "<<isegment<<"; t_subgoal = "<<t_subgoal<<endl;
         isegment++;
         if (isegment > nsegs - 1) {
