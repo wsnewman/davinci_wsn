@@ -14,12 +14,10 @@
 	<build_depend>sticky_fingers</build_depend>
 	<build_depend>davinci_kinematics</build_depend>
 	<build_depend>eigen</build_depend>
-	<build_depend>other_utilities</build_depend>
 
 	<run_depend>sticky_fingers</run_depend>
 	<run_depend>davinci_kinematics</run_depend>
 	<run_depend>eigen</run_depend>
-	<run_depend>other_utilities</run_depend>
 
 	<export>
 		<gazebo_ros plugin_path="${prefix}/lib" gazebo_media_path="${prefix}" />

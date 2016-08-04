@@ -3,8 +3,6 @@
 #include <davinci_kinematics/davinci_joint_publisher.h>
 #include <davinci_kinematics/davinci_kinematics.h>
 
-#include <other_utilities/math_utility.h>
-
 const double MAX_PULL_LENGTH = 1.0;
 
 Eigen::Vector3d thread_start_loc;
@@ -92,13 +90,16 @@ int main(int argc, char** argv){
 		ROS_ERROR("Safety cube undefined! WTF?!");
 		return 1;
 	}
-	ROS_INFO("Transformed safety cube is (%f, %f, %f) to (%f, %f, %f)", safety_cube[0].x(), safety_cube[0].y(),safety_cube[0].z(), safety_cube[1].x(), safety_cube[1].y(),safety_cube[1].z());
-	
+	/*ROS_INFO("Transformed safety cube is (%f, %f, %f) to (%f, %f, %f)", safety_cube[0].x(), safety_cube[0].y(),safety_cube[0].z(), safety_cube[1].x(), safety_cube[1].y(),safety_cube[1].z());
+	Eigen::Vector3d tmp1 = camera_to_world_tf * safety_cube[0];
+	Eigen::Vector3d tmp2 = camera_to_world_tf * safety_cube[1];
+	ROS_INFO("Retransformed safety cube is (%f, %f, %f) to (%f, %f, %f)", tmp1.x(), tmp1.y(),tmp1.z(), tmp2.x(), tmp2.y(),tmp2.z());*/
 	
 	//Go ahead and get the location of or thread (in camera space).
-	/*if(!find_thread_start()){
+	if(!find_thread_start()){
 		ROS_ERROR("String puller could not locate the thread.");
-		ROS_ERROR("Make sure there is a thread there or something... actually, I'm really not sure HOW this can even happen.");
+		ROS_ERROR("Make sure there is a thread there or something...\
+		 actually, I'm really not sure HOW this can even happen in hardcoded mode.");
 		return 1;
 	}
 	
@@ -106,7 +107,8 @@ int main(int argc, char** argv){
 	right_gripper_leading = true;
 	get_limb_position(true, nh);
 	
-	//Calculate a parametric equation for the line between those two points.
+	/*
+//Calculate a parametric equation for the line between those two points.
 	x_delta = right_gripper_position.x() - thread_start_loc.x();
 	y_delta = right_gripper_position.y() - thread_start_loc.y();
 	z_delta = right_gripper_position.z() - thread_start_loc.z();
@@ -129,7 +131,7 @@ int main(int argc, char** argv){
 bool find_thread_start(){
 	//HARDCODED======================================================================================================================
 	//Hardcoded location in world space.
-	thread_start_loc = Eigen::Vector3d(0.0, -0.261329, 0.546016);
+	thread_start_loc = Eigen::Vector3d(0.0, -0.261329, 0.142492);
 	//Convert it to camera space...
 	thread_start_loc = world_to_camera_tf * thread_start_loc;
 	//===============================================================================================================================
@@ -142,8 +144,8 @@ bool find_safety_cube(){
 	//Code the corners of the cube in which we operate.
 	safety_cube = new Eigen::Vector3d[2];
 	
-	safety_cube[0] = Eigen::Vector3d(-0.25, -0.3, 0.4);
-	safety_cube[1] = Eigen::Vector3d(0.25, 0.1, 0.8);
+	safety_cube[0] = Eigen::Vector3d(-0.25, -0.3, 0.1);
+	safety_cube[1] = Eigen::Vector3d(0.25, 0.1, 0.5);
 	
 	safety_cube[0] = world_to_camera_tf * safety_cube[0];
 	safety_cube[1] = world_to_camera_tf * safety_cube[1];

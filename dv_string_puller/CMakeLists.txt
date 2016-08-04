@@ -10,7 +10,7 @@ add_definitions(${EIGEN_DEFINITIONS})
 catkin_simple()
 
 cs_add_executable(pull_string_hardcoded src/pull_string_hardcoded.cpp)
-target_link_libraries(pull_string_hardcoded math_utility davinci_kinematics ${catkin_LIBRARIES})
+target_link_libraries(pull_string_hardcoded davinci_kinematics ${catkin_LIBRARIES})
 
 cs_install()
 cs_export()
