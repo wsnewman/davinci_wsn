@@ -2,6 +2,8 @@
 
 roslaunch davinci_gazebo sticky_davinci_gazebo.launch &
 
+sleep 2.0
+
 rosrun davinci_traj_streamer davinci_traj_interpolator_as & 
 
 read A

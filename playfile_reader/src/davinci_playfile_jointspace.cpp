@@ -1,108 +1,32 @@
-// example of how to read a joint-space trajectory stored line-by-line in CSV file format, convert to trajectory and play play it
-//specialized for dual-PSM davinci; assumes fixed order:
-// entries 0-6 correspond to PSM1, joints 1-7; entries 7-13 are joints 1-7 of PSM2; entry 14 is desired arrival time (from start), in seconds.
-//each line must contain all 15 values (in fixed order), separated by commas
-
-//the file is read, checked for size consistency (though not for joint-range viability, nor speed viability)
-// file is packed up as a "trajectory" message and delivered within a "goal" message to the trajectory-streamer action server.
-
 #include <ros/ros.h>
 #include <ros/package.h>
-#include <davinci_kinematics/davinci_joint_publisher.h>
-#include <davinci_kinematics/davinci_kinematics.h>
-#include <davinci_traj_streamer/davinci_traj_streamer.h>
-#include <fstream>
-#include <iostream>
-#include <sstream>
-#include <string>
-#include <vector>
-
 #include <actionlib/client/simple_action_client.h>
-#include <actionlib/client/terminal_state.h>
 
-//this #include refers to the new "action" message defined for this package
-// the action message can be found in: .../baxter_traj_streamer/action/traj.action
-// automated header generation creates multiple headers for message I/O
-// these are referred to by the root name (traj) and appended name (Action)
-// If you write a new client of the server in this package, you will need to include baxter_traj_streamer in your package.xml,
-// and include the header file below
-#include<davinci_traj_streamer/trajAction.h>
-using namespace std;
-typedef vector <double> record_t;
-typedef vector <record_t> data_t;
+#include <playfile_reader/playfile_record.h>
 
-// see: http://www.cplusplus.com/forum/general/17771/
-//-----------------------------------------------------------------------------
-// Let's overload the stream input operator to read a list of CSV fields (which a CSV record).
-// Remember, a record is a list of doubles separated by commas ','.
-istream& operator >> ( istream& ins, record_t& record ){
-	// make sure that the returned record contains only the stuff we read now
-	record.clear();
+#include <davinci_traj_streamer/trajAction.h>
 
-	// read the entire line into a string (a CSV record is terminated by a newline)
-	string line;
-	getline( ins, line );
-
-	// now we'll use a stringstream to separate the fields out of the line
-	stringstream ss( line );
-	string field;
-	while (getline( ss, field, ',' )){
-		// for each field we wish to convert it to a double
-		// (since we require that the CSV contains nothing but floating-point values)
-		stringstream fs( field );
-		double f = 0.0;// (default value is 0.0)
-		fs >> f;
-
-		// add the newly-converted field to the end of the record
-		record.push_back( f );
-	}
-
-	// Now we have read a single line, converted into a list of fields, converted the fields
-	// from strings to doubles, and stored the results in the argument record, so
-	// we just return the argument stream as required for this kind of input overload function.
-	return ins;
-}
-
-//-----------------------------------------------------------------------------
-// Let's likewise overload the stream input operator to read a list of CSV records.
-// This time it is a little easier, just because we only need to worry about reading
-// records, and not fields.
-istream& operator >> ( istream& ins, data_t& data ){
+// Read a list of CSV records.
+std::istream& operator >> (std::istream & ins, data_t & data){
 	// make sure that the returned data only contains the CSV data we read here
 	data.clear();
 
 	// For every record we can read from the file, append it to our resulting data
 	record_t record;
 	while (ins >> record){
-		data.push_back( record );
+		data.push_back(record);
 	}
 
 	// Again, return the argument stream as required for this kind of input stream overload.
 	return ins;
 }
 
-// This function will be called once when the goal completes
-// this is optional, but it is a convenient way to get access to the "result" message sent by the server
-void doneCb(
-	const actionlib::SimpleClientGoalState& state,
-	const davinci_traj_streamer::trajResultConstPtr& result
-){
-	ROS_INFO(" doneCb: server responded with state [%s]", state.toString().c_str());
-	ROS_INFO("got return val = %d; traj_id = %d",result->return_val,result->traj_id);
-}
-
-int main(int argc, char** argv){
-	ros::init(argc, argv, "playfile_jointspace"); //node name
-	ros::NodeHandle nh; // create a node handle; need to pass this to the class constructor
-	//instantiate a DavinciJointPublisher object and pass in pointer to nodehandle for constructor to use
-	DavinciJointPublisher davinciJointPublisher(nh);
- 
-	//ROS_INFO("instantiatingforward solver and an ik_solver");
-	//Davinci_fwd_solver davinci_fwd_solver; //instantiate a forward-kinematics solver
-	//Davinci_IK_solver ik_solver;
-
-	//FIRST CHANGE: ADD PACKAGE LOCATION SUPPORT
-
+int main(int argc, char **argv) {
+	//Set up our node.
+	ros::init(argc, argv, "playfile_jointspace");
+	ros::NodeHandle nh;
+	
+	//Locate our file.
 	std::string fname;
 	if(argc == 2){
 		fname = argv[1];
@@ -119,37 +43,21 @@ int main(int argc, char** argv){
 		return 0;
 	}
 	
-	
-	//open the trajectory file:
-	ifstream infile(fname.c_str());
-	if(!infile){		// file couldn't be opened
-		cerr << "Error: file could not be opened; halting" << endl;
+	//Read the file in.
+	std::ifstream infile(fname.c_str());
+	if(!infile){//file couldn't be opened
+		ROS_ERROR("Error: file %s could not be opened.", fname.c_str());
 		exit(1);
 	}
-
-	// define a vector of desired joint displacements...w/o linkage redundancies
-	//7'th angle is related to jaw opening--but not well handled yet
-	//Vectorq7x1 q_vec,q_vec2;
-	//vector <Vectorq7x1> q1_vecs,q2_vecs;
-	//vector <double> arrival_times;
-
-	// Here is the data we want.
 	data_t data;
-
-	// Here is the file containing the data. Read it into data.
 	infile >> data;
-
-	// Complain if something went wrong.
 	if (!infile.eof()){
-		cout << "error reading file!\n";
-		return 1;
+		ROS_ERROR("Error: file %s could not be read properly.", fname.c_str());
+		exit(1);
 	}
-
 	infile.close();
-
-	// Otherwise, list some basic information about the file.
-	//cout << "CSV file contains " << data.size() << " records.\n";
-
+	
+	//Perform a few checks...
 	unsigned min_record_size = data[0].size();
 	unsigned max_record_size = 0;
 	for (unsigned n = 0; n < data.size(); n++) {
@@ -159,103 +67,82 @@ int main(int argc, char** argv){
 			min_record_size = data[ n ].size();
 	}
 	if (max_record_size>15) {
-		ROS_WARN("bad file");
-		cout << "The largest record has " << max_record_size << " fields.\n";
-		return 1;
+		ROS_ERROR("Bad file %s: The largest record has %i fields.", fname.c_str(), max_record_size);
+		exit(1);
 	}
 	if (min_record_size<15) {
-		ROS_WARN("bad file");
-		cout << "The smallest record has " << min_record_size << " fields.\n";
-		return 1;
+		ROS_ERROR("Bad file %s: The smallest record has %i fields.", fname.c_str(), min_record_size);
+		exit(1);
 	}
-	//cout << "The second field in the fourth record contains the value " << data[ 3 ][ 1 ] << ".\n";
-
-	//data is valid; pack it up as a trajectory and ship it
-
-	trajectory_msgs::JointTrajectory des_trajectory; // an empty trajectory 
-	des_trajectory.points.clear(); // can clear components, but not entire trajectory_msgs
-	des_trajectory.joint_names.clear(); //could put joint names in...but I assume a fixed order and fixed size, so this is unnecessary
-	// if using wsn's trajectory streamer action server
-	des_trajectory.header.stamp = ros::Time::now(); 
-
-	trajectory_msgs::JointTrajectoryPoint trajectory_point;//,trajectory_point2; 
-	trajectory_point.positions.resize(14);
-	double t_arrival;
 	
-	double tat = 0.0;
-	
-	for (unsigned n = 0; n < data.size(); n++) {
-		// pack trajectory points, one at a time:
+	//Convert into a trajectory message
+	trajectory_msgs::JointTrajectory des_trajectory;
+	double total_wait_time = 0.0;
+	for (unsigned n = 0; n < data.size(); n++){
+		trajectory_msgs::JointTrajectoryPoint trajectory_point;
+		trajectory_point.positions.resize(14);
+		double t_arrival;
+		
+		//Pack points, one at a time.
 		for (int i=0;i<14;i++) {
 			trajectory_point.positions[i] = data[n][i];
 		}
 		t_arrival = data[n][14];
 		trajectory_point.time_from_start = ros::Duration(t_arrival);
-		tat = tat + t_arrival;
+		
 		des_trajectory.points.push_back(trajectory_point);
+		
+		total_wait_time = t_arrival;
 	}
- 
-	//now have the data in a trajectory; send it to the trajectory streamer action server to execute
-
-	// here is a "goal" object compatible with the server, as defined in example_action_server/action
-	// copy traj to goal: 
-	davinci_traj_streamer::trajGoal goal;
-	goal.trajectory = des_trajectory;
-	//cout<<"ready to connect to action server; enter 1: ";
-	//cin>>ans;
-	// use the name of our server, which is: trajActionServer (named in traj_interpolator_as.cpp)
-	actionlib::SimpleActionClient<davinci_traj_streamer::trajAction> action_client("trajActionServer", true);
-
-	// attempt to connect to the server:
-	ROS_INFO("waiting for server: ");
-	bool server_exists = action_client.waitForServer(ros::Duration(5.0)); // wait for up to 5 seconds
+	des_trajectory.header.stamp = ros::Time::now();
+	
+	//Add an ID.
+	davinci_traj_streamer::trajGoal tgoal;
+	tgoal.trajectory = des_trajectory;
+	srand(time(NULL));
+	tgoal.traj_id = rand();
+	
+	//Locate and lock the action server
+	actionlib::SimpleActionClient<
+		davinci_traj_streamer::trajAction
+	> action_client("trajActionServer", true);
+	bool server_exists = action_client.waitForServer(ros::Duration(5.0));
 	// something odd in above: does not seem to wait for 5 seconds, but returns rapidly if server not running
-
-
+	ROS_INFO("Waiting for server: ");
 	while (!server_exists && ros::ok()) {
-		ROS_WARN("could not connect to server; retrying");
 		server_exists = action_client.waitForServer(ros::Duration(5.0));
+		ROS_WARN("Could not connect to server; retrying...");
 	}
-	//server_exists = action_client.waitForServer(); //wait forever 
-
- 
-	ROS_INFO("connected to action server");// if here, then we connected to the server;
-
-	// stuff a goal message:
-	//g_count++;
-	//goal.traj_id = g_count; // this merely sequentially numbers the goals sent
-	//ROS_INFO("sending traj_id %d",g_count);
-	//action_client.sendGoal(goal); // simple example--send goal, but do not specify callbacks
-	action_client.sendGoal(goal,&doneCb); // we could also name additional callback functions here, if desired
-	//action_client.sendGoal(goal, &doneCb, &activeCb, &feedbackCb); //e.g., like this
+	ROS_INFO("SERVER LINK LATCHED");
 	
-	bool finished_before_timeout;
-	//double rt;// = ros::Time::now().toSec();
-	//while(rt == 0.0 && ros::ok()){
-	//	ROS_WARN("Got zero time. Trying again...");
-	//	rt = ros::Time::now().toSec();
-	//}
-	//do{
-		//rt = ros::Time::now().toSec();
-		//ROS_ERROR("Beginning wall time is %f", rt);
-		finished_before_timeout = action_client.waitForResult(ros::Duration(tat+2.0));
-		//ROS_ERROR("Ending wall time is %f", ros::Time::now().toSec());
-		//ROS_WARN("Done with wait...");
-	//}while(rt == 0.0 && ros::ok());
+	//Send our message:
+	ROS_INFO("Sending trajectory with ID %u", tgoal.traj_id);
+	action_client.sendGoal(tgoal);
 	
-	//Sometimes this times out damn near immediately. Some sort of underlying ROS issue?
-	//bool finished_before_timeout = action_client.waitForResult(); // wait forever...
-	if (!finished_before_timeout) {
-		ROS_WARN("giving up waiting on result");
-		ROS_INFO("Timespan was %f", tat+2.0);
-		return 0;
+	//In theory, the following function call does absolutely nothing.
+	//In practice, it prevents an intermittent bug that rarely makes the
+	//action server unusable.
+	action_client.getState();
+	
+	//Wait for it to finish.
+	while(!action_client.waitForResult(ros::Duration(total_wait_time + 2.0)) && ros::ok()){
+		ROS_WARN("CLIENT TIMED OUT- LET'S TRY AGAIN...");
 	}
-	else {
-		ROS_INFO("finished before timeout");
+	
+	ROS_INFO(
+		"Sevre state is %s, goal state for trajectory %u is %i",
+		action_client.getState().toString().c_str(),
+		action_client.getResult()->traj_id,
+		action_client.getResult()->return_val
+	);
+	
+	//This has to do with the intermittent bug referenced above
+	//If you see this appear in your execution, relaunch the entire simulation and everything
+	//because it's not recoverable, and contact me immediately- or, better yet, DON'T
+	//contact me, because I will have no idea what to do about it.
+	if(action_client.getState() ==  actionlib::SimpleClientGoalState::RECALLED){
+		ROS_WARN("Server glitch. You may panic now.");
 	}
 
-
-
-	cout << "Good bye!\n";
 	return 0;
 }
