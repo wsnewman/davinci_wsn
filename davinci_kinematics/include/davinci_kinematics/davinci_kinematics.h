@@ -226,10 +226,10 @@ public:
 
     tf::TransformListener *tfListener_ptr_; //pointer to a transform listener
     // some translation utilities
-    Eigen::Affine3f transformTFToEigen(const tf::Transform &t); 
-    Eigen::Affine3f stampedTFToEigen(const tf::StampedTransform &t);
-    Eigen::Affine3d transformTFToAffine3d(const tf::Transform &t); 
-    Eigen::Affine3d stampedTFToAffine3d(const tf::StampedTransform &t);
+    static Eigen::Affine3f transformTFToEigen(const tf::Transform &t); 
+    static Eigen::Affine3f stampedTFToEigen(const tf::StampedTransform &t);
+    static Eigen::Affine3d transformTFToAffine3d(const tf::Transform &t); 
+    static Eigen::Affine3d stampedTFToAffine3d(const tf::StampedTransform &t);
     
     geometry_msgs::Pose transformEigenAffine3fToPose(Eigen::Affine3f e);
     geometry_msgs::Pose transformEigenAffine3dToPose(Eigen::Affine3d e);
@@ -249,7 +249,7 @@ public:
     
     int psm1_joint_indices_from_namelist[7];
     int psm2_joint_indices_from_namelist[7];
-    bool get_jnt_val_by_name(string jnt_name,sensor_msgs::JointState jointState,double &qval);
+    static bool get_jnt_val_by_name(string jnt_name,sensor_msgs::JointState jointState,double &qval);
 
     Eigen::Affine3d get_affine_frame(int i) { return affine_products_[i]; }; // return affine of frame i w/rt base
     void gen_rand_legal_jnt_vals(Vectorq7x1 &qvec);     

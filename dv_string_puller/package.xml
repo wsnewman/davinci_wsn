@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<package>
+	<name>dv_string_puller</name>
+	<version>0.0.0</version>
+	<description>The package that tells Da Vinci to pull strings.</description>
+
+	<maintainer email="tes77@case.edu">Tom</maintainer>
+
+	<license>TODO</license>
+
+	<buildtool_depend>catkin</buildtool_depend>
+	<buildtool_depend>catkin_simple</buildtool_depend>
+
+	<build_depend>sticky_fingers</build_depend>
+	<build_depend>davinci_kinematics</build_depend>
+	<build_depend>davinci_traj_streamer</build_depend>
+	<build_depend>eigen</build_depend>
+
+	<run_depend>sticky_fingers</run_depend>
+	<run_depend>davinci_kinematics</run_depend>
+	<run_depend>davinci_traj_streamer</run_depend>
+	<run_depend>eigen</run_depend>
+
+	<export>
+		<gazebo_ros plugin_path="${prefix}/lib" gazebo_media_path="${prefix}" />
+	</export>
+</package>

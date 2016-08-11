@@ -1,0 +1,58 @@
+<?xml version='1.0'?>
+<sdf version='1.4'>
+	<model name="bluethread_32mm">
+		<include>
+			<uri>model://bluethread_8mm</uri>
+			<name>comp_1</name>
+			<pose>0 0 0 0 0 0</pose>
+		</include>
+		<include>
+			<uri>model://bluethread_8mm</uri>
+			<name>comp_2</name>
+			<pose>0 0 0.008 0 0 0</pose>
+		</include>
+		<joint name="j1-2" type="revolute2">
+			<parent>comp_1::comp_7::link</parent>
+			<child>comp_2::comp_1::link</child>
+			<pose>0 0 -0.0005 0 0 0</pose>
+			<axis>
+				<xyz>0 1.0 0</xyz>
+			</axis>
+			<axis2>
+				<xyz>1.0 0 0</xyz>
+			</axis2>
+		</joint>
+		<include>
+			<uri>model://bluethread_8mm</uri>
+			<name>comp_3</name>
+			<pose>0 0 0.016 0 0 0</pose>
+		</include>
+		<joint name="j2-3" type="revolute2">
+			<parent>comp_2::comp_7::link</parent>
+			<child>comp_3::comp_1::link</child>
+			<pose>0 0 -0.0005 0 0 0</pose>
+			<axis>
+				<xyz>0 1.0 0</xyz>
+			</axis>
+			<axis2>
+				<xyz>1.0 0 0</xyz>
+			</axis2>
+		</joint>
+		<include>
+			<uri>model://bluethread_8mm</uri>
+			<name>comp_4</name>
+			<pose>0 0 0.024 0 0 0</pose>
+		</include>
+		<joint name="j3-4" type="revolute2">
+			<parent>comp_3::comp_7::link</parent>
+			<child>comp_4::comp_1::link</child>
+			<pose>0 0 -0.0005 0 0 0</pose>
+			<axis>
+				<xyz>0 1.0 0</xyz>
+			</axis>
+			<axis2>
+				<xyz>1.0 0 0</xyz>
+			</axis2>
+		</joint>
+	</model>
+</sdf>
